@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import com.example.inventoryapp.model.InventoryItem
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryCard(item: InventoryItem, onClick: () -> Unit) {
     Card(
