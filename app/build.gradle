@@ -22,6 +22,18 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+	kotlin {
+    compilerOptions {
+        freeCompilerArgs += [
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=IntrinsicRemember",
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=OptimizeNonSkippingGroups",
+            "-P",
+            "plugin:androidx.compose.compiler.plugins.kotlin:featureFlag=StrongSkipping"
+			]
+		}
+	}
 
     kotlinOptions {
         jvmTarget = "17"
