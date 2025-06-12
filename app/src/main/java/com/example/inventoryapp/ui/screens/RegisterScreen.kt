@@ -8,6 +8,7 @@ import androidx.navigation.NavHostController
 import com.example.inventoryapp.data.AuthRepository
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun RegisterScreen(navController: NavHostController, authRepo: AuthRepository) {
