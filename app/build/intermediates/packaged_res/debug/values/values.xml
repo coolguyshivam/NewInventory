@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Inventory App</string>
+    <string name="gcm_defaultSenderId" translatable="false">397694956</string>
+    <string name="google_api_key" translatable="false">AIzaSyBJdl2ja180zxb48gh0caiN3TOlmkR5bMA</string>
+    <string name="google_app_id" translatable="false">1:397694956:android:7d4c155c6cce4ff55392c9</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBJdl2ja180zxb48gh0caiN3TOlmkR5bMA</string>
+    <string name="google_storage_bucket" translatable="false">inventoryapp-21dc9.firebasestorage.app</string>
+    <string name="project_id" translatable="false">inventoryapp-21dc9</string>
+</resources>

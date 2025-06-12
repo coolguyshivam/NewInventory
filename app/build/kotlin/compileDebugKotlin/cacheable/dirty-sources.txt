@@ -1,0 +1,8 @@
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\SoldScreen.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\TransactionScreen.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\MainActivity.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\BarcodeScannerScreen.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\MainScreen.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\model\InventoryItem.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\InventoryScreen.kt
+C:\Users\Dell\Desktop\shivam\InventoryApp_FullProject\app\src\main\java\com\example\inventoryapp\ui\TransactionListScreen.kt
