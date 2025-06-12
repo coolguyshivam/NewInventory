@@ -4,10 +4,13 @@ import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.Result
+import com.example.inventoryapp.model.InventoryItem
+import com.example.inventoryapp.ui.components.InventoryCard
 import kotlinx.coroutines.launch
 
 @Composable
@@ -16,7 +19,7 @@ fun InventoryScreen(
     inventoryRepo: InventoryRepository,
     authRepo: AuthRepository
 ) {
-    var items by remember { mutableStateOf(emptyList<com.example.inventoryapp.model.InventoryItem>()) }
+    var items by remember { mutableStateOf(emptyList<InventoryItem>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
@@ -46,15 +49,9 @@ fun InventoryScreen(
             Text(error!!, color = MaterialTheme.colorScheme.error)
         } else {
             items.forEach { item ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = {
+                InventoryCard(item = item, onClick = {
                     navController.navigate("transaction/${item.serial}")
-                }) {
-                    Column(Modifier.padding(8.dp)) {
-                        Text("Model: ${item.model}")
-                        Text("Serial: ${item.serial}")
-                        Text("Date: ${item.date}")
-                    }
-                }
+                })
             }
         }
     }
