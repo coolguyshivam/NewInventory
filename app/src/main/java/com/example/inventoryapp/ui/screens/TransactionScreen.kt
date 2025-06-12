@@ -10,6 +10,7 @@ import com.example.inventoryapp.model.Transaction
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun TransactionScreen(
