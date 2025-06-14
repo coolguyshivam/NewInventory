@@ -23,8 +23,11 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
 
-    - name: Clean APK
-      run:  ./gradlew clean build
+    - name: clear dependeny APK
+      run:  ./gradlew app:dependencies
+
+#    - name: Clean APK
+#      run:  ./gradlew clean build
 
     - name: Build APK
       run: ./gradlew assembleDebug
