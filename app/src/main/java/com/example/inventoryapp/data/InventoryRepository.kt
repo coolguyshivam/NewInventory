@@ -4,14 +4,15 @@ import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.inventoryapp.util.Result
 
 class InventoryRepository(private val db: FirebaseFirestore = FirebaseFirestore.getInstance()) {
     suspend fun getInventory(): Result<List<InventoryItem>> = try {
         val snapshot = db.collection("transactions")
             .whereEqualTo("type", "Purchase")
             .get().await()
-        val items = snapshot.documents.map { doc ->
-            doc.toObject(InventoryItem::class.java)!!.copy(id = doc.id)
+        val items = snapshot.documents.mapNotNull { doc ->
+            doc.toObject(InventoryItem::class.java)?.copy(id = doc.id)
         }
         Result.Success(items)
     } catch (e: Exception) {
@@ -32,5 +33,5 @@ class InventoryRepository(private val db: FirebaseFirestore = FirebaseFirestore.
         Result.Error(e)
     }
 
-    // ... add edit/delete as needed
+    // Add edit/delete if needed
 }

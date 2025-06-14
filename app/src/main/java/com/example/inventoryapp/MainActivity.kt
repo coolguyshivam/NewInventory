@@ -11,11 +11,12 @@ import androidx.compose.material3.MaterialTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val authRepo = AuthRepository()
-        val inventoryRepo = InventoryRepository()
         setContent {
             MaterialTheme {
-                AppNavHost(authRepo, inventoryRepo)
+                AppNavHost(
+                    authRepo = AuthRepository(),
+                    inventoryRepo = InventoryRepository()
+                )
             }
         }
     }

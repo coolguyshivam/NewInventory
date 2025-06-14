@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.inventoryapp-mergeDebugResources-63:/values-v23/values-v23.xml",
+            "outputFile": "com.example.inventoryapp-mergeDebugResources-67:/values-v23/values-v23.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\5f74754ecda5b243b8d265a668aaa9ea\\transformed\\appcompat-1.6.1\\res\\values-v23\\values-v23.xml",
+                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\be213a347444808c81e3876c7fa34a5a\\transformed\\appcompat-1.6.1\\res\\values-v23\\values-v23.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,20,34,35,36,39,43,44,45,46",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4",

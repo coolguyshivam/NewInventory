@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.inventoryapp-mergeDebugResources-63:/values-night-v8/values-night-v8.xml",
+            "outputFile": "com.example.inventoryapp-mergeDebugResources-67:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\5f74754ecda5b243b8d265a668aaa9ea\\transformed\\appcompat-1.6.1\\res\\values-night-v8\\values-night-v8.xml",
+                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\be213a347444808c81e3876c7fa34a5a\\transformed\\appcompat-1.6.1\\res\\values-night-v8\\values-night-v8.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",

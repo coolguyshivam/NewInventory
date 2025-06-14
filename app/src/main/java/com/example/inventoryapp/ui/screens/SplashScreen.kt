@@ -1,24 +1,23 @@
 package com.example.inventoryapp.ui.screens
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import com.example.inventoryapp.data.AuthRepository
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
-fun SplashScreen(navController: NavHostController, authRepo: AuthRepository) {
-    LaunchedEffect(Unit) {
-        if (authRepo.currentUser != null) {
-            navController.navigate("inventory") { popUpTo("splash") { inclusive = true } }
-        } else {
-            navController.navigate("login") { popUpTo("splash") { inclusive = true } }
+fun SplashScreen(navController: NavController, authRepo: AuthRepository) {
+    Surface(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+            // Insert logic to navigate based on auth state
         }
-    }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
     }
 }

@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.inventoryapp-mergeDebugResources-63:/values-v16/values-v16.xml",
+            "outputFile": "com.example.inventoryapp-mergeDebugResources-67:/values-v16/values-v16.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\5f74754ecda5b243b8d265a668aaa9ea\\transformed\\appcompat-1.6.1\\res\\values-v16\\values-v16.xml",
+                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\be213a347444808c81e3876c7fa34a5a\\transformed\\appcompat-1.6.1\\res\\values-v16\\values-v16.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",
@@ -23,7 +23,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\7942a4b3e8a81090db2a8f526073ec30\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "source": "C:\\Users\\Dell\\.gradle\\caches\\transforms-3\\df30e0440371747b4085639f0347a835\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

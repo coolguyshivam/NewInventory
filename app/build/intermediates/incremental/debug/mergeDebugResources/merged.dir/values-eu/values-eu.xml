@@ -27,6 +27,8 @@
     <string msgid="8875138169939072951" name="abc_shareactionprovider_share_with">"Partekatu honekin"</string>
     <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"Partekatu <ns1:g id="APPLICATION_NAME">%s</ns1:g> aplikazioarekin"</string>
     <string msgid="1656852541809559762" name="abc_toolbar_collapse_description">"Tolestu"</string>
+    <string msgid="8397015543330865059" name="android.credentials.TYPE_PASSWORD_CREDENTIAL">"Pasahitza"</string>
+    <string msgid="3929015085059320822" name="androidx.credentials.TYPE_PUBLIC_KEY_CREDENTIAL">"Sarbide-gakoa"</string>
     <string msgid="6128938260108474660" name="bottom_sheet_collapse_description">"Tolestu pantailaren behealdean ainguratutako orria"</string>
     <string msgid="1918297411568599192" name="bottom_sheet_dismiss_description">"Baztertu pantailaren behealdean ainguratutako orria"</string>
     <string msgid="7772321844937772780" name="bottom_sheet_drag_handle_description">"Arrastatzeko kontrol-puntua"</string>
@@ -59,6 +61,8 @@
     <string name="common_open_on_phone">Ireki telefonoan</string>
     <string name="common_signin_button_text">Hasi saioa</string>
     <string name="common_signin_button_text_long">Hasi saioa Google-ko kontuarekin</string>
+    <string msgid="5912733858573823945" name="confirm_device_credential_password">"Erabili pasahitza"</string>
+    <string msgid="3260749812566568062" name="copy_toast_msg">"Arbelean kopiatu da esteka"</string>
     <string msgid="3499643850558715142" name="date_input_headline">"Idatzitako data"</string>
     <string msgid="8562356184193964298" name="date_input_headline_description">"Idatzitako data: %1$s"</string>
     <string msgid="5281836720766682161" name="date_input_invalid_for_pattern">"Data ez dator bat espero den ereduarekin: %1$s"</string>
@@ -91,10 +95,24 @@
     <string msgid="5759491386723090559" name="date_range_picker_start_headline">"Hasiera-data"</string>
     <string msgid="690080476639943577" name="date_range_picker_title">"Hautatu datak"</string>
     <string msgid="8038256446254964252" name="default_error_message">"Sarrerak ez du balio"</string>
+    <string msgid="4776854077120974966" name="default_error_msg">"Errore ezezaguna"</string>
     <string msgid="6312721426453364202" name="default_popup_window_title">"Leiho gainerakorra"</string>
     <string msgid="4057925834421392736" name="dialog">"Leihoa"</string>
     <string msgid="1890207353314751437" name="dropdown_menu">"Goitibeherako menua"</string>
     <string msgid="5974471714631304645" name="expanded">"Zabalduta"</string>
+    <string msgid="4566929209979330987" name="fallback_menu_item_copy_link">"Kopiatu esteka"</string>
+    <string msgid="3413186855122069269" name="fallback_menu_item_open_in_browser">"Ireki arakatzailean"</string>
+    <string msgid="7145444925855055364" name="fallback_menu_item_share_link">"Partekatu esteka"</string>
+    <string msgid="1072308044213194243" name="fingerprint_dialog_touch_sensor">"Sakatu hatz-marken sentsorea"</string>
+    <string msgid="8216738333501875566" name="fingerprint_error_hw_not_available">"Hatz-marken hardwarea ez dago erabilgarri."</string>
+    <string msgid="6306988885793029438" name="fingerprint_error_hw_not_present">"Gailu honek ez du hatz-marken sentsorerik"</string>
+    <string msgid="7291787166416782245" name="fingerprint_error_lockout">"Saiakera gehiegi egin dira. Saiatu berriro geroago."</string>
+    <string msgid="7520712796891883488" name="fingerprint_error_no_fingerprints">"Ez da erregistratu hatz-markarik."</string>
+    <string msgid="7627716295344353987" name="fingerprint_error_user_canceled">"Erabiltzaileak bertan behera utzi du hatz-marka bidezko eragiketa."</string>
+    <string msgid="3873359464293253009" name="fingerprint_not_recognized">"Ez da ezagutu"</string>
+    <string msgid="3791785319221634505" name="generic_error_no_device_credential">"Ez da ezarri PIN koderik, eredurik edo pasahitzik."</string>
+    <string msgid="1807436368654974044" name="generic_error_no_keyguard">"Gailuak ez du onartzen PIN kode, eredu edo pasahitzik."</string>
+    <string msgid="7309881387583143581" name="generic_error_user_canceled">"Erabiltzaileak bertan behera utzi du autentifikazioa"</string>
     <string msgid="6827826412747255547" name="in_progress">"Abian"</string>
     <string msgid="7933458017204019916" name="indeterminate">"Erdi-markatuta"</string>
     <string msgid="542007171693138492" name="navigation_menu">"Nabigazio-menua"</string>
