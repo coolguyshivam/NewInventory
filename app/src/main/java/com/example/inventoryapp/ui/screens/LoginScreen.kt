@@ -1,11 +1,13 @@
 package com.example.inventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.AuthRepository
-import com.example.inventoryapp.data.Result
-import androidx.compose.material3.*
-import androidx.compose.foundation.layout.*
 
 @Composable
 fun LoginScreen(navController: NavController, authRepo: AuthRepository) {
@@ -23,13 +25,15 @@ fun LoginScreen(navController: NavController, authRepo: AuthRepository) {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") }
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation()
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -39,13 +43,14 @@ fun LoginScreen(navController: NavController, authRepo: AuthRepository) {
                 error = null
                 // CoroutineScope omitted for brevity, use viewModel or LaunchedEffect in real app
             },
-            enabled = !loading
+            enabled = !loading,
+            modifier = Modifier.padding(top = 8.dp)
         ) {
             Text("Login")
         }
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
-        if (loading) CircularProgressIndicator()
+        if (loading) CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp))
     }
 }

@@ -1,12 +1,14 @@
 package com.example.inventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
-import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.data.Result
-import androidx.compose.material3.*
-import androidx.compose.foundation.layout.*
+import com.example.inventoryapp.model.InventoryItem
 
 @Composable
 fun AddEditItemScreen(
@@ -29,19 +31,22 @@ fun AddEditItemScreen(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Name") }
+            label = { Text("Name") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = quantity,
             onValueChange = { quantity = it },
-            label = { Text("Quantity") }
+            label = { Text("Quantity") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Description") }
+            label = { Text("Description") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         Button(
@@ -50,13 +55,14 @@ fun AddEditItemScreen(
                 error = null
                 // In a real app, launch a coroutine or use ViewModel
             },
-            enabled = !loading
+            enabled = !loading,
+            modifier = Modifier.padding(top = 16.dp)
         ) {
             Text("Save")
         }
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
-        if (loading) CircularProgressIndicator()
+        if (loading) CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
     }
 }

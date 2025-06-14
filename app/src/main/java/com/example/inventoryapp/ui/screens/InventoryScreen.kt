@@ -1,15 +1,20 @@
 package com.example.inventoryapp.ui.screens
 
-import androidx.compose.runtime.*
-import androidx.navigation.NavController
-import com.example.inventoryapp.data.InventoryRepository
-import com.example.inventoryapp.data.AuthRepository
-import com.example.inventoryapp.data.Result
-import com.example.inventoryapp.model.InventoryItem
-import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.example.inventoryapp.data.AuthRepository
+import com.example.inventoryapp.data.InventoryRepository
+import com.example.inventoryapp.data.Result
+import com.example.inventoryapp.model.InventoryItem
 
 @Composable
 fun InventoryScreen(
@@ -40,15 +45,21 @@ fun InventoryScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
-        LazyColumn {
-            items(inventory) { item ->
-                Text("${item.name} (${item.quantity})")
-                // Use InventoryCard for nicer UI
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+            }
+            LazyColumn {
+                items(inventory) { item ->
+                    Text("${item.name} (${item.quantity})", modifier = Modifier.padding(8.dp))
+                    // Use InventoryCard for nicer UI
+                }
             }
         }
     }

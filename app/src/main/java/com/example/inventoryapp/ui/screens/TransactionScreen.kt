@@ -1,9 +1,11 @@
 package com.example.inventoryapp.ui.screens
 
-import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.inventoryapp.data.InventoryRepository
@@ -18,7 +20,6 @@ fun TransactionScreen(
     inventoryRepo: InventoryRepository,
     serial: String
 ) {
-    // State for all input fields
     var model by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var aadhaar by remember { mutableStateOf("") }
@@ -27,7 +28,6 @@ fun TransactionScreen(
     var date by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
     var quantity by remember { mutableStateOf("1") }
 
-    // Error, loading, and coroutine scope
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -67,7 +67,7 @@ fun TransactionScreen(
             label = { Text("Amount") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default.copy(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
@@ -76,7 +76,7 @@ fun TransactionScreen(
             label = { Text("Quantity") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default.copy(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
@@ -103,12 +103,10 @@ fun TransactionScreen(
         Button(
             onClick = {
                 error = null
-                // Validate required fields
                 if (model.isBlank() || serial.isBlank() || amount.isBlank()) {
                     error = "Model, Serial, and Amount are required"
                     return@Button
                 }
-                // Validate numeric fields
                 val amountVal = amount.toDoubleOrNull()
                 val quantityVal = quantity.toIntOrNull()
                 if (amountVal == null || amountVal <= 0) {
