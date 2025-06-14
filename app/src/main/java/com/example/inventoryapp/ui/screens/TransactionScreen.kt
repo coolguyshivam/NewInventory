@@ -1,18 +1,28 @@
 package com.example.inventoryapp.ui.screens
 
+import android.app.Activity
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.firebase.storage.FirebaseStorage
 
 @Composable
 fun TransactionScreen(
@@ -27,10 +37,18 @@ fun TransactionScreen(
     var description by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
     var quantity by remember { mutableStateOf("1") }
-
+    var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Image Picker (gallery or camera, up to 3 images)
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(3)) { uris ->
+        if (uris != null) {
+            imageUris = uris.take(3)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -94,6 +112,22 @@ fun TransactionScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Text("Add Images (Max 3)")
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            imageUris.forEach { uri ->
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
 
         if (error != null) {
             Text(error ?: "", color = MaterialTheme.colorScheme.error)
@@ -119,6 +153,16 @@ fun TransactionScreen(
                 }
                 loading = true
                 scope.launch {
+                    // Upload images to Firebase Storage and collect URLs
+                    val imageUrls = mutableListOf<String>()
+                    val storage = FirebaseStorage.getInstance().reference
+                    imageUris.forEachIndexed { idx, uri ->
+                        val ref = storage.child("transactions/${UUID.randomUUID()}.jpg")
+                        val uploadTask = ref.putFile(uri)
+                        uploadTask.await() // Use kotlinx-coroutines-play-services
+                        val url = ref.downloadUrl.await().toString()
+                        imageUrls.add(url)
+                    }
                     val trans = Transaction(
                         type = "Sale",
                         model = model,
@@ -129,7 +173,8 @@ fun TransactionScreen(
                         description = description,
                         date = date,
                         quantity = quantityVal,
-                        timestamp = System.currentTimeMillis()
+                        timestamp = System.currentTimeMillis(),
+                        imageUrls = imageUrls
                     )
                     when (val res = inventoryRepo.addTransaction(trans)) {
                         is com.example.inventoryapp.data.Result.Success -> {

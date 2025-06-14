@@ -1,28 +1,100 @@
 package com.example.inventoryapp.ui.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.*
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.Assessment
+
+sealed class MainScreen(val route: String, val label: String, val icon: @Composable () -> Unit) {
+    object Inventory : MainScreen("inventory", "Inventory", { Icon(Icons.Default.List, contentDescription = "Inventory") })
+    object Transaction : MainScreen("transaction", "Transaction", { Icon(Icons.Default.AddShoppingCart, contentDescription = "Transaction") })
+    object Reports : MainScreen("reports", "Reports", { Icon(Icons.Default.Assessment, contentDescription = "Reports") })
+}
 
 @Composable
 fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
     val navController = rememberNavController()
-    NavHost(navController, startDestination = "splash") {
-        composable("splash") { SplashScreen(navController, authRepo) }
-        composable("login") { LoginScreen(navController, authRepo) }
-        composable("register") { RegisterScreen(navController, authRepo) }
-        composable("inventory") { InventoryScreen(navController, inventoryRepo, authRepo) }
-        composable("addEditItem/{itemId?}") { backStackEntry ->
-            val itemId = backStackEntry.arguments?.getString("itemId")
-            AddEditItemScreen(navController, inventoryRepo, itemId)
+    var showBottomBar by remember { mutableStateOf(true) }
+
+    val mainScreens = listOf(
+        MainScreen.Inventory,
+        MainScreen.Transaction,
+        MainScreen.Reports
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar) {
+                NavigationBar {
+                    val currentDestination = navController.currentDestination?.route
+                    mainScreens.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { screen.icon() },
+                            label = { Text(screen.label) },
+                            selected = currentDestination == screen.route,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                }
+            }
         }
-        composable("transaction/{serial}") { backStackEntry ->
-            val serial = backStackEntry.arguments?.getString("serial") ?: ""
-            TransactionScreen(navController, inventoryRepo, serial)
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "splash",
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable("splash") {
+                showBottomBar = false
+                SplashScreen(navController, authRepo)
+            }
+            composable("login") {
+                showBottomBar = false
+                LoginScreen(navController, authRepo)
+            }
+            composable("register") {
+                showBottomBar = false
+                RegisterScreen(navController, authRepo)
+            }
+            composable(MainScreen.Inventory.route) {
+                showBottomBar = true
+                InventoryScreen(navController, inventoryRepo, authRepo)
+            }
+            composable(MainScreen.Transaction.route) {
+                showBottomBar = true
+                // You can have a transaction list or transaction entry screen here
+                // If it's just entry, show the screen with empty serial
+                TransactionScreen(navController, inventoryRepo, serial = "")
+            }
+            composable(MainScreen.Reports.route) {
+                showBottomBar = true
+                ReportsScreen(inventoryRepo)
+            }
+            composable("addEditItem/{itemId?}") { backStackEntry ->
+                showBottomBar = false
+                val itemId = backStackEntry.arguments?.getString("itemId")
+                AddEditItemScreen(navController, inventoryRepo, itemId)
+            }
+            composable("transaction/{serial}") { backStackEntry ->
+                showBottomBar = false
+                val serial = backStackEntry.arguments?.getString("serial") ?: ""
+                TransactionScreen(navController, inventoryRepo, serial)
+            }
         }
     }
 }

@@ -2,7 +2,7 @@ package com.example.inventoryapp.model
 
 data class Transaction(
     val id: String = "",
-    val type: String = "",
+    val type: String = "", // "Purchase" or "Sale"
     val model: String = "",
     val serial: String = "",
     val phone: String = "",
@@ -11,5 +11,6 @@ data class Transaction(
     val description: String = "",
     val date: String = "",
     val quantity: Int = 1,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val imageUrls: List<String> = emptyList()
 )
