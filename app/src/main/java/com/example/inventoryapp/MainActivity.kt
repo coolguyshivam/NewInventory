@@ -6,13 +6,13 @@ import androidx.activity.compose.setContent
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.navigation.AppNavHost
-import androidx.compose.material3.MaterialTheme
+import com.example.inventoryapp.ui.theme.InventoryAppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            InventoryAppTheme {
                 AppNavHost(
                     authRepo = AuthRepository(),
                     inventoryRepo = InventoryRepository()

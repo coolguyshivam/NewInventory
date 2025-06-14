@@ -1,25 +1,23 @@
 package com.example.inventoryapp.ui.components
 
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.*
 import com.example.inventoryapp.model.InventoryItem
-import androidx.compose.ui.unit.dp
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventoryCard(item: InventoryItem, onClick: () -> Unit) {
+fun InventoryCard(item: InventoryItem) {
     Card(
-        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(8.dp)
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text("Model: ${item.model}")
-            Text("Serial: ${item.serial}")
-            Text("Date: ${item.date}")
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(item.name, style = MaterialTheme.typography.titleLarge)
+            Text("Quantity: ${item.quantity}")
+            item.description.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

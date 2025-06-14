@@ -4,9 +4,9 @@ import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import com.example.inventoryapp.util.Result
 
 class InventoryRepository(private val db: FirebaseFirestore = FirebaseFirestore.getInstance()) {
+
     suspend fun getInventory(): Result<List<InventoryItem>> = try {
         val snapshot = db.collection("transactions")
             .whereEqualTo("type", "Purchase")
@@ -32,6 +32,4 @@ class InventoryRepository(private val db: FirebaseFirestore = FirebaseFirestore.
     } catch (e: Exception) {
         Result.Error(e)
     }
-
-    // Add edit/delete if needed
 }

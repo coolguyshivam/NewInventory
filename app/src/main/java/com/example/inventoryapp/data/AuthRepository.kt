@@ -2,7 +2,6 @@ package com.example.inventoryapp.data
 
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
-import com.example.inventoryapp.util.Result
 
 class AuthRepository(private val auth: FirebaseAuth = FirebaseAuth.getInstance()) {
     val currentUser get() = auth.currentUser

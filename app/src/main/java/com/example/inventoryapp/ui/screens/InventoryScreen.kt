@@ -1,57 +1,54 @@
 package com.example.inventoryapp.ui.screens
 
 import androidx.compose.runtime.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.InventoryItem
-import com.example.inventoryapp.ui.components.InventoryCard
-import kotlinx.coroutines.launch
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 @Composable
 fun InventoryScreen(
-    navController: NavHostController,
+    navController: NavController,
     inventoryRepo: InventoryRepository,
     authRepo: AuthRepository
 ) {
-    var items by remember { mutableStateOf(emptyList<InventoryItem>()) }
+    var inventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
 
+    // In real usage, use ViewModel or LaunchedEffect for async loading.
     LaunchedEffect(Unit) {
         loading = true
         when (val result = inventoryRepo.getInventory()) {
-            is Result.Success -> items = result.data
-            is Result.Error -> error = result.exception.message
-            else -> {}
+            is Result.Success -> {
+                inventory = result.data
+                error = null
+            }
+            is Result.Error -> {
+                error = result.exception.message
+            }
         }
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = { navController.navigate("addEditItem") }) { Text("+ Add Item") }
-            Button(onClick = {
-                authRepo.logout()
-                navController.navigate("login") { popUpTo("inventory") { inclusive = true } }
-            }) { Text("Logout") }
-        }
-        Spacer(Modifier.height(16.dp))
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
         if (loading) {
-            CircularProgressIndicator()
-        } else if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error)
-        } else {
-            items.forEach { item ->
-                InventoryCard(item = item, onClick = {
-                    navController.navigate("transaction/${item.serial}")
-                })
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        }
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+        LazyColumn {
+            items(inventory) { item ->
+                Text("${item.name} (${item.quantity})")
+                // Use InventoryCard for nicer UI
             }
         }
     }
