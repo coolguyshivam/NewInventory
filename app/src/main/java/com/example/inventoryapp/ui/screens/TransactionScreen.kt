@@ -1,6 +1,5 @@
 package com.example.inventoryapp.ui.screens
 
-import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -23,6 +22,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun TransactionScreen(
@@ -43,7 +43,6 @@ fun TransactionScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Image Picker (gallery or camera, up to 3 images)
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(3)) { uris ->
         if (uris != null) {
             imageUris = uris.take(3)
@@ -159,7 +158,7 @@ fun TransactionScreen(
                     imageUris.forEachIndexed { idx, uri ->
                         val ref = storage.child("transactions/${UUID.randomUUID()}.jpg")
                         val uploadTask = ref.putFile(uri)
-                        uploadTask.await() // Use kotlinx-coroutines-play-services
+                        uploadTask.await()
                         val url = ref.downloadUrl.await().toString()
                         imageUrls.add(url)
                     }

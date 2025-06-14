@@ -3,8 +3,11 @@ package com.example.inventoryapp.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -23,7 +26,6 @@ fun InventoryScreen(
     var inventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -45,7 +47,7 @@ fun InventoryScreen(
         if (loading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
@@ -55,30 +57,9 @@ fun InventoryScreen(
             }
             LazyColumn {
                 items(inventory) { item ->
-                    InventoryCard(item = item, onClick = { selectedItem = item })
+                    InventoryCard(item = item)
                 }
             }
-        }
-
-        // Details Dialog
-        selectedItem?.let { item ->
-            AlertDialog(
-                onDismissRequest = { selectedItem = null },
-                confirmButton = {
-                    TextButton(onClick = { selectedItem = null }) {
-                        Text("Close")
-                    }
-                },
-                title = { Text("Item Details") },
-                text = {
-                    Column {
-                        Text("Name: ${item.name}")
-                        Text("Quantity: ${item.quantity}")
-                        Text("Description: ${item.description}")
-                        // Add other relevant fields if needed
-                    }
-                }
-            )
         }
     }
 }

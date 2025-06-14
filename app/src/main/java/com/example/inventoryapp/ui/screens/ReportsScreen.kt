@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
+import java.util.Date
 
 @Composable
 fun ReportsScreen(inventoryRepo: InventoryRepository) {
@@ -21,8 +22,6 @@ fun ReportsScreen(inventoryRepo: InventoryRepository) {
 
     LaunchedEffect(Unit) {
         loading = true
-        // You should create a method in your repo to fetch all transactions, grouped by date if needed
-        // For now, let's suppose getAllTransactions() returns a list of Transaction
         when (val result = inventoryRepo.getAllTransactions()) {
             is Result.Success -> {
                 transactions = result.data
@@ -47,8 +46,8 @@ fun ReportsScreen(inventoryRepo: InventoryRepository) {
             LazyColumn {
                 items(transactions) { tx ->
                     val color = when (tx.type) {
-                        "Sale" -> Color(0xFFD0F8CE) // light green
-                        "Purchase" -> Color(0xFFFFF9C4) // light yellow
+                        "Sale" -> Color(0xFFD0F8CE)
+                        "Purchase" -> Color(0xFFFFF9C4)
                         else -> Color.LightGray
                     }
                     Card(

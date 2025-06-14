@@ -1,23 +1,29 @@
 package com.example.inventoryapp.ui.navigation
 
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.*
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Assessment
 
 sealed class MainScreen(val route: String, val label: String, val icon: @Composable () -> Unit) {
-    object Inventory : MainScreen("inventory", "Inventory", { Icon(Icons.Default.List, contentDescription = "Inventory") })
-    object Transaction : MainScreen("transaction", "Transaction", { Icon(Icons.Default.AddShoppingCart, contentDescription = "Transaction") })
-    object Reports : MainScreen("reports", "Reports", { Icon(Icons.Default.Assessment, contentDescription = "Reports") })
+    object Inventory : MainScreen("inventory", "Inventory", { Icon(Icons.Filled.List, contentDescription = "Inventory") })
+    object Transaction : MainScreen("transaction", "Transaction", { Icon(Icons.Filled.AddShoppingCart, contentDescription = "Transaction") })
+    object Reports : MainScreen("reports", "Reports", { Icon(Icons.Filled.Assessment, contentDescription = "Reports") })
 }
 
 @Composable
@@ -35,12 +41,13 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    val currentDestination = navController.currentDestination?.route
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
                     mainScreens.forEach { screen ->
                         NavigationBarItem(
                             icon = { screen.icon() },
                             label = { Text(screen.label) },
-                            selected = currentDestination == screen.route,
+                            selected = currentRoute == screen.route,
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
@@ -77,8 +84,6 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
             }
             composable(MainScreen.Transaction.route) {
                 showBottomBar = true
-                // You can have a transaction list or transaction entry screen here
-                // If it's just entry, show the screen with empty serial
                 TransactionScreen(navController, inventoryRepo, serial = "")
             }
             composable(MainScreen.Reports.route) {
