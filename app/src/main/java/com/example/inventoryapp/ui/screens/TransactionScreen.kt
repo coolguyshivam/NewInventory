@@ -18,6 +18,7 @@ import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
+import androidx.compose.foundation.layout.padding
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*

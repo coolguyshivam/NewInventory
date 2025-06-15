@@ -14,6 +14,7 @@ import androidx.navigation.compose.*
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.*
+import androidx.compose.foundation.layout.padding
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
