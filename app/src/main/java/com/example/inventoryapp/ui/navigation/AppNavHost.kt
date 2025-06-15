@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.automirrored.filled.List // <-- updated import
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,7 +20,7 @@ sealed class MainScreen(val route: String, val label: String, val icon: @Composa
     object Inventory : MainScreen(
         "inventory",
         "Inventory",
-        { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Inventory") } // <-- updated usage
+        { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Inventory") }
     )
     object Transaction : MainScreen(
         "transaction",
