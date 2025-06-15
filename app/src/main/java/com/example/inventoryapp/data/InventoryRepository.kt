@@ -6,11 +6,8 @@ import com.example.inventoryapp.model.Transaction
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import com.example.inventoryapp.data.Result
 
-sealed class Result<out T> {
-    data class Success<T>(val data: T) : Result<T>()
-    data class Error(val exception: Throwable) : Result<Nothing>()
-}
 
 class InventoryRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
