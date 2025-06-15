@@ -15,8 +15,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavHostController
 import com.google.accompanist.permissions.*
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.concurrent.Executors
@@ -36,20 +36,17 @@ fun BarcodeScannerScreen(
     }
 
     if (cameraPermission.status.isGranted) {
-        CameraPreview(
-            onScanned = { code ->
-                onScanned(code)
-                navController.popBackStack() // Automatically navigate back
-            }
-        )
+        CameraPreview(onScanned = onScanned)
     } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             Text("Camera permission required to scan barcodes.")
         }
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraPreview(onScanned: (String) -> Unit) {
     val context = LocalContext.current
@@ -59,47 +56,52 @@ fun CameraPreview(onScanned: (String) -> Unit) {
     var scanned by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(factory = { ctx ->
-            val previewView = PreviewView(ctx)
+        AndroidView(
+            factory = { ctx ->
+                val previewView = PreviewView(ctx)
 
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
 
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
+                    val preview = Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
 
-                val imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
+                    val imageAnalyzer = ImageAnalysis.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
 
-                imageAnalyzer.setAnalyzer(executor) { imageProxy ->
-                    processBarcodeImage(imageProxy) { code ->
-                        if (!scanned) {
-                            scanned = true
-                            onScanned(code)
+                    imageAnalyzer.setAnalyzer(executor) { imageProxy ->
+                        @OptIn(ExperimentalGetImage::class)
+                        processBarcodeImage(imageProxy) { code ->
+                            if (!scanned) {
+                                scanned = true
+                                onScanned(code)
+                            }
                         }
                     }
-                }
 
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview,
-                        imageAnalyzer
-                    )
-                } catch (exc: Exception) {
-                    exc.printStackTrace()
-                }
-            }, ContextCompat.getMainExecutor(ctx))
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalyzer
+                        )
+                    } catch (exc: Exception) {
+                        exc.printStackTrace()
+                    }
 
-            previewView
-        }, modifier = Modifier.fillMaxSize())
+                }, ContextCompat.getMainExecutor(ctx))
+
+                previewView
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -115,15 +117,8 @@ private fun processBarcodeImage(
 
     val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
-    // ✅ Restrict to numeric/IMEI barcode types only
     val options = BarcodeScannerOptions.Builder()
-        .setBarcodeFormats(
-            Barcode.FORMAT_CODE_128,
-            Barcode.FORMAT_EAN_13,
-            Barcode.FORMAT_ITF,
-            Barcode.FORMAT_UPC_A,
-            Barcode.FORMAT_UPC_E
-        )
+        .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
         .build()
 
     val scanner = BarcodeScanning.getClient(options)
