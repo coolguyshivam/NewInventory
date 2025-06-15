@@ -32,7 +32,7 @@ import java.util.*
 fun TransactionScreen(
     navController: NavController,
     inventoryRepo: InventoryRepository,
-    Serial: String = ""
+    serial: String = ""
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
