@@ -1,8 +1,7 @@
 package com.example.inventoryapp.model
 
 data class Transaction(
-    val id: String = "",
-    val type: String = "", // "Purchase" or "Sale"
+    val type: String = "",
     val model: String = "",
     val serial: String = "",
     val phone: String = "",
