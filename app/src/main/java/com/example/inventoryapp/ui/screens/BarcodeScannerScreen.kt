@@ -64,7 +64,7 @@ fun CameraPreview(onScanned: (String) -> Unit) {
                 }
 
                 val imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetResolution(Size(1280, 720)) // Deprecated warning only
+                    .setTargetResolution(Size(1280, 720)) // Deprecated, but standard for CameraX resolution targeting.
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
@@ -97,7 +97,7 @@ fun CameraPreview(onScanned: (String) -> Unit) {
     }
 }
 
-@OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@androidx.camera.core.ExperimentalGetImage
 private fun processBarcodeImage(imageProxy: ImageProxy, onDetected: (String) -> Unit) {
     val mediaImage = imageProxy.image ?: run {
         imageProxy.close()
