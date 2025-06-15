@@ -1,7 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
 import android.Manifest
-import android.util.Size
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -64,7 +63,7 @@ fun CameraPreview(onScanned: (String) -> Unit) {
                 }
 
                 val imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetResolution(Size(1280, 720)) // Deprecated warning only
+                    .setTargetAspectRatio(AspectRatio.RATIO_16_9) // Use 16:9 aspect ratio for analysis
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
