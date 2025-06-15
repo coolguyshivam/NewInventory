@@ -63,7 +63,7 @@ fun CameraPreview(onScanned: (String) -> Unit) {
                 }
 
                 val imageAnalyzer = ImageAnalysis.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_16_9) // Use 16:9 aspect ratio for analysis
+                    .setTargetAspectRatio(AspectRatio.RATIO_16_9) // Replaces deprecated setTargetResolution
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
