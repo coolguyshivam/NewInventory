@@ -7,6 +7,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -17,11 +18,10 @@ import com.google.accompanist.permissions.*
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.Executors
-import androidx.compose.ui.Alignment
 import com.google.mlkit.vision.barcode.common.Barcode
+import java.util.concurrent.Executors
 
-@OptIn(ExperimentalPermissionsApi::class, androidx.camera.core.ExperimentalGetImage::class)
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun BarcodeScannerScreen(
     navController: NavHostController,
@@ -36,7 +36,12 @@ fun BarcodeScannerScreen(
     }
 
     if (cameraPermission.status.isGranted) {
-        CameraPreview(onScanned = onScanned)
+        CameraPreview(
+            onScanned = { code ->
+                onScanned(code)
+                navController.popBackStack() // Automatically navigate back
+            }
+        )
     } else {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Camera permission required to scan barcodes.")
@@ -44,7 +49,7 @@ fun BarcodeScannerScreen(
     }
 }
 
-@OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraPreview(onScanned: (String) -> Unit) {
     val context = LocalContext.current
@@ -56,6 +61,7 @@ fun CameraPreview(onScanned: (String) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { ctx ->
             val previewView = PreviewView(ctx)
+
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
 
@@ -68,14 +74,14 @@ fun CameraPreview(onScanned: (String) -> Unit) {
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
-                imageAnalyzer.setAnalyzer(executor, { imageProxy ->
+                imageAnalyzer.setAnalyzer(executor) { imageProxy ->
                     processBarcodeImage(imageProxy) { code ->
                         if (!scanned) {
                             scanned = true
                             onScanned(code)
                         }
                     }
-                })
+                }
 
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
@@ -97,17 +103,29 @@ fun CameraPreview(onScanned: (String) -> Unit) {
     }
 }
 
-@androidx.camera.core.ExperimentalGetImage
-private fun processBarcodeImage(imageProxy: ImageProxy, onDetected: (String) -> Unit) {
+@OptIn(ExperimentalGetImage::class)
+private fun processBarcodeImage(
+    imageProxy: ImageProxy,
+    onDetected: (String) -> Unit
+) {
     val mediaImage = imageProxy.image ?: run {
         imageProxy.close()
         return
     }
 
     val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+
+    // ✅ Restrict to numeric/IMEI barcode types only
     val options = BarcodeScannerOptions.Builder()
-        .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+        .setBarcodeFormats(
+            Barcode.FORMAT_CODE_128,
+            Barcode.FORMAT_EAN_13,
+            Barcode.FORMAT_ITF,
+            Barcode.FORMAT_UPC_A,
+            Barcode.FORMAT_UPC_E
+        )
         .build()
+
     val scanner = BarcodeScanning.getClient(options)
 
     scanner.process(inputImage)
