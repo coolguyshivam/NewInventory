@@ -61,10 +61,17 @@ fun TransactionScreen(
     // Auto-fetch model when serial changes
     LaunchedEffect(serialState) {
         if (serialState.isNotBlank()) {
-            inventoryRepo.getItemBySerial(serialState)?.let {
-                model = it.model
+            val item = inventoryRepo.getItemBySerial(serialState) // must be suspend
+            if (item != null) {
+                model = item.model
                 isModelAuto = true
+            } else {
+                model = ""
+                isModelAuto = false
             }
+        } else {
+            model = ""
+            isModelAuto = false
         }
     }
 
