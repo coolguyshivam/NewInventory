@@ -11,7 +11,6 @@ import com.example.inventoryapp.data.Result
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.data.InventoryRepository
-import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import java.util.Date
 

@@ -3,7 +3,6 @@ package com.example.inventoryapp.ui.screens
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import com.example.inventoryapp.data.Result
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -38,7 +37,7 @@ fun TransactionScreen(
     val scope = rememberCoroutineScope()
     val savedState = navController.currentBackStackEntry?.savedStateHandle
 
-    var serial by remember { mutableStateOf(initialSerial) }
+    var serialState by remember { mutableStateOf(serial) }
     var model by remember { mutableStateOf("") }
     var isModelAuto by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
@@ -54,15 +53,15 @@ fun TransactionScreen(
     // Handle scanned serial
     LaunchedEffect(savedState?.get<String>("scannedSerial")) {
         savedState?.get<String>("scannedSerial")?.let { code ->
-            serial = code
+            serialState = code
             savedState.remove<String>("scannedSerial")
         }
     }
 
     // Auto-fetch model when serial changes
-    LaunchedEffect(serial) {
-        if (serial.isNotBlank()) {
-            inventoryRepo.getItemBySerial(serial)?.let {
+    LaunchedEffect(serialState) {
+        if (serialState.isNotBlank()) {
+            inventoryRepo.getItemBySerial(serialState)?.let {
                 model = it.model
                 isModelAuto = true
             }
@@ -75,9 +74,9 @@ fun TransactionScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
-            value = serial,
+            value = serialState,
             onValueChange = {
-                serial = it
+                serialState = it
                 isModelAuto = false
             },
             label = { Text("Serial") },
@@ -191,7 +190,7 @@ fun TransactionScreen(
                 error = null
                 val amt = amount.toDoubleOrNull()
                 val qty = quantity.toIntOrNull()
-                if (serial.isBlank() || model.isBlank() || amt == null || amt <= 0 || qty == null || qty <= 0) {
+                if (serialState.isBlank() || model.isBlank() || amt == null || amt <= 0 || qty == null || qty <= 0) {
                     error = "Check Serial, Model, positive Amount & Quantity"
                     return@Button
                 }
@@ -206,7 +205,7 @@ fun TransactionScreen(
                             urls += ref.downloadUrl.await().toString()
                         }
                         val txn = Transaction(
-                            type = "Sale", model = model, serial = serial,
+                            type = "Sale", model = model, serial = serialState,
                             phone = phone, aadhaar = aadhaar,
                             amount = amt, description = description, date = date,
                             quantity = qty, timestamp = System.currentTimeMillis(), imageUrls = urls

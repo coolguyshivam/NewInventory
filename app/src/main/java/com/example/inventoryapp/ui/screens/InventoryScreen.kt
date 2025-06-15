@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
-import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.ui.components.InventoryCard
 
