@@ -9,10 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.*
@@ -39,7 +38,7 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
             if (showBottomBar) {
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentRoute = navBackStackEntry?.destination?.route
+                    val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/") // Avoid matching parameterized routes
                     mainScreens.forEach { screen ->
                         NavigationBarItem(
                             icon = { screen.icon() },
@@ -47,7 +46,9 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                             selected = currentRoute == screen.route,
                             onClick = {
                                 navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
+                                    popUpTo(navController.graph.findStartDestination().route!!) {
+                                        saveState = true
+                                    }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -83,6 +84,20 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                 showBottomBar = true
                 TransactionScreen(navController, inventoryRepo, serial = "")
             }
+            composable(
+                route = "transaction/{serial}",
+                arguments = listOf(
+                    navArgument("serial") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = true
+                    }
+                )
+            ) { backStackEntry ->
+                showBottomBar = false
+                val serial = backStackEntry.arguments?.getString("serial") ?: ""
+                TransactionScreen(navController, inventoryRepo, serial)
+            }
             composable(MainScreen.Reports.route) {
                 showBottomBar = true
                 ReportsScreen(inventoryRepo)
@@ -91,18 +106,6 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                 showBottomBar = false
                 val itemId = backStackEntry.arguments?.getString("itemId")
                 AddEditItemScreen(navController, inventoryRepo, itemId)
-            }
-            composable(
-                route = "transaction/{serial}",
-                arguments = listOf(navArgument("serial") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                    nullable = true
-                })
-            ) { backStackEntry ->
-                showBottomBar = false
-                val serial = backStackEntry.arguments?.getString("serial") ?: ""
-                TransactionScreen(navController, inventoryRepo, serial)
             }
             composable("barcode_scan") {
                 showBottomBar = false

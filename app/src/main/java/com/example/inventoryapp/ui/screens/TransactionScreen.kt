@@ -3,6 +3,7 @@ package com.example.inventoryapp.ui.screens
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.example.inventoryapp.data.Result
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
