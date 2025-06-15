@@ -1,107 +1,98 @@
 package com.example.inventoryapp.ui.screens
 
-import android.Manifest
+import android.annotation.SuppressLint
+import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
-import androidx.navigation.NavHostController
-import com.google.accompanist.permissions.*
-import com.google.mlkit.vision.barcode.BarcodeScanning
+import androidx.navigation.NavController
+import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.concurrent.Executors
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun BarcodeScannerScreen(
-    navController: NavHostController,
-    onScanned: (String) -> Unit
+    navController: NavController,
+    onBarcodeScanned: (String) -> Unit
 ) {
-    val cameraPermission = rememberPermissionState(Manifest.permission.CAMERA)
-
-    LaunchedEffect(Unit) {
-        if (!cameraPermission.status.isGranted) {
-            cameraPermission.launchPermissionRequest()
-        }
-    }
-
-    if (cameraPermission.status.isGranted) {
-        CameraPreview(onScanned = onScanned)
-    } else {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Camera permission required to scan barcodes.")
-        }
-    }
-}
-
-@Composable
-fun CameraPreview(onScanned: (String) -> Unit) {
     val context = LocalContext.current
-    val lifecycleOwner = context as LifecycleOwner
+    val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val executor = remember { Executors.newSingleThreadExecutor() }
-    var scanned by remember { mutableStateOf(false) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
+    var barcodeScanned by remember { mutableStateOf(false) }
 
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Scan Barcode") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier
+            .padding(padding)
+            .fillMaxSize()) {
+
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
 
                     val preview = Preview.Builder().build().also {
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
 
-                    val imageAnalyzer = ImageAnalysis.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-
-                    imageAnalyzer.setAnalyzer(executor) { imageProxy ->
-                        @OptIn(ExperimentalGetImage::class)
-                        processBarcodeImage(imageProxy) { code ->
-                            if (!scanned) {
-                                scanned = true
-                                onScanned(code)
-                            }
-                        }
-                    }
-
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
+                    val imageAnalyzer = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also {
+                            it.setAnalyzer(cameraExecutor) { imageProxy ->
+                                if (!barcodeScanned) {
+                                    processBarcodeImage(imageProxy) { barcodeValue ->
+                                        barcodeScanned = true
+                                        onBarcodeScanned(barcodeValue)
+                                        navController.popBackStack()
+                                    }
+                                } else {
+                                    imageProxy.close()
+                                }
+                            }
+                        }
+
                     try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        cameraProviderFuture.get().unbindAll()
+                        cameraProviderFuture.get().bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
                             preview,
                             imageAnalyzer
                         )
-                    } catch (exc: Exception) {
-                        exc.printStackTrace()
+                    } catch (e: Exception) {
+                        Log.e("BarcodeScanner", "Camera initialization failed", e)
                     }
 
-                }, ContextCompat.getMainExecutor(ctx))
-
-                previewView
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
