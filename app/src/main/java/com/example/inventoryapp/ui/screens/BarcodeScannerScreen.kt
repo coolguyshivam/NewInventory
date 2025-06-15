@@ -1,7 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.util.Size
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -46,7 +45,7 @@ fun BarcodeScannerScreen(
     }
 }
 
-@SuppressLint("UnsafeOptInUsageError")
+@OptIn(androidx.camera.core.ExperimentalGetImage::class)
 @Composable
 fun CameraPreview(onScanned: (String) -> Unit) {
     val context = LocalContext.current

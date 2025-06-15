@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List // <-- updated import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,9 +17,21 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.*
 
 sealed class MainScreen(val route: String, val label: String, val icon: @Composable () -> Unit) {
-    object Inventory : MainScreen("inventory", "Inventory", { Icon(Icons.Filled.List, contentDescription = "Inventory") })
-    object Transaction : MainScreen("transaction", "Transaction", { Icon(Icons.Filled.AddShoppingCart, contentDescription = "Transaction") })
-    object Reports : MainScreen("reports", "Reports", { Icon(Icons.Filled.Assessment, contentDescription = "Reports") })
+    object Inventory : MainScreen(
+        "inventory",
+        "Inventory",
+        { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Inventory") } // <-- updated usage
+    )
+    object Transaction : MainScreen(
+        "transaction",
+        "Transaction",
+        { Icon(Icons.Filled.AddShoppingCart, contentDescription = "Transaction") }
+    )
+    object Reports : MainScreen(
+        "reports",
+        "Reports",
+        { Icon(Icons.Filled.Assessment, contentDescription = "Reports") }
+    )
 }
 
 @Composable
@@ -38,7 +50,7 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
             if (showBottomBar) {
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/") // Avoid matching parameterized routes
+                    val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/")
                     mainScreens.forEach { screen ->
                         NavigationBarItem(
                             icon = { screen.icon() },
