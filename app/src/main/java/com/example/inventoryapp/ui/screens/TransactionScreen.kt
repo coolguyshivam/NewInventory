@@ -50,7 +50,7 @@ fun TransactionScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
 
-    // Handle scanned serial
+    // Handle scanned serial from BarcodeScanner
     LaunchedEffect(savedState?.get<String>("scannedSerial")) {
         savedState?.get<String>("scannedSerial")?.let { code ->
             serialState = code
@@ -72,7 +72,10 @@ fun TransactionScreen(
         images = uris?.take(3) ?: emptyList()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
+
         OutlinedTextField(
             value = serialState,
             onValueChange = {
@@ -144,7 +147,7 @@ fun TransactionScreen(
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = date,
-            onValueChange = {},
+            onValueChange = {}, // Date is only changed via the picker
             label = { Text("Date") },
             readOnly = true,
             modifier = Modifier
@@ -170,7 +173,13 @@ fun TransactionScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        Button(onClick = { imgPicker.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly).build()) }) {
+        Button(onClick = {
+            imgPicker.launch(
+                PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    .build()
+            )
+        }) {
             Text("Add Images (Max 3)")
         }
 
