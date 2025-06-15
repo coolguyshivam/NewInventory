@@ -119,16 +119,15 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                 val itemId = backStackEntry.arguments?.getString("itemId")
                 AddEditItemScreen(navController, inventoryRepo, itemId)
             }
-            composable("barcode_scan") {
-                showBottomBar = false
-                BarcodeScannerScreen(
-                    navController = navController,
-                    onScanned = { scannedSerial ->
-                        navController.popBackStack()
-                        navController.navigate("transaction/$scannedSerial")
-                    }
-                )
-            }
+            composable("barcodeScanner") {
+				BarcodeScannerScreen(
+					navController = navController,
+					onBarcodeScanned = { scannedCode ->
+						// Navigate to TransactionScreen with the scanned code
+						navController.navigate("transactionScreen?serial=$scannedCode")
+					}
+				)
+			}
         }
     }
 }

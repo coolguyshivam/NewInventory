@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.inventoryapp.data.InventoryRepository
+import com.example.inventoryapp.data.InventoryRepository`
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import com.google.firebase.storage.FirebaseStorage
