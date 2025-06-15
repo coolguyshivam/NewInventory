@@ -21,7 +21,7 @@ import java.util.concurrent.Executors
 import androidx.compose.ui.Alignment
 import com.google.mlkit.vision.barcode.common.Barcode
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, androidx.camera.core.ExperimentalGetImage::class)
 @Composable
 fun BarcodeScannerScreen(
     navController: NavHostController,
