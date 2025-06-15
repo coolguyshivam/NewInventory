@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
+import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
@@ -59,7 +60,7 @@ fun TransactionScreen(
     // Auto-fetch model when serial changes
     LaunchedEffect(serialState) {
         if (serialState.isNotBlank()) {
-            val item = inventoryRepo.getItemBySerial(serialState) // must be suspend
+            val item = inventoryRepo.getItemBySerial(serialState)
             if (item != null) {
                 model = item.model
                 isModelAuto = true
@@ -230,8 +231,8 @@ fun TransactionScreen(
                             quantity = qty, timestamp = System.currentTimeMillis(), imageUrls = urls
                         )
                         when (val res = inventoryRepo.addTransaction(txn)) {
-                            is com.example.inventoryapp.data.Result.Success -> navController.popBackStack()
-                            is com.example.inventoryapp.data.Result.Error -> error = res.exception.localizedMessage
+                            is Result.Success -> navController.popBackStack()
+                            is Result.Error -> error = res.exception.localizedMessage
                         }
                     } catch (e: Exception) {
                         error = e.localizedMessage

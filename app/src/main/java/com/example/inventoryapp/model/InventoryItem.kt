@@ -3,6 +3,7 @@ package com.example.inventoryapp.model
 data class InventoryItem(
     val serial: String = "",
     val name: String = "",         // Human-readable name
+	val model: String = ""
     val quantity: Int = 0,         // Inventory stock count
     val model: String = "",
     val phone: String = "",

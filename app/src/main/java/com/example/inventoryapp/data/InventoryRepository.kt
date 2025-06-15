@@ -7,12 +7,31 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
-class InventoryRepository {
+sealed class Result<out T> {
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val exception: Throwable) : Result<Nothing>()
+}
 
-    private val db = FirebaseFirestore.getInstance()
+class InventoryRepository(
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+) {
     private val inventoryRef = db.collection("inventory")
     private val transactionsRef = db.collection("transactions")
-    private val storageRef = FirebaseStorage.getInstance().reference
+    private val storageRef = storage.reference
+
+    /** Returns the first InventoryItem whose 'serial' field matches the given serial, or null if not found. */
+    suspend fun getItemBySerial(serial: String): InventoryItem? {
+        return try {
+            val query = inventoryRef.whereEqualTo("serial", serial)
+                .limit(1)
+                .get()
+                .await()
+            query.documents.firstOrNull()?.toObject(InventoryItem::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     suspend fun getInventory(): Result<List<InventoryItem>> {
         return try {
@@ -34,28 +53,29 @@ class InventoryRepository {
         }
     }
 
-    suspend fun addTransaction(transaction: Transaction): Result<Void?> {
+    suspend fun addTransaction(transaction: Transaction): Result<Unit> {
         return try {
             transactionsRef.add(transaction).await()
-            Result.Success(null)
+            Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    suspend fun updateInventory(item: InventoryItem): Result<Void?> {
+    suspend fun updateInventory(item: InventoryItem): Result<Unit> {
         return try {
+            // Uses document ID as item's serial
             inventoryRef.document(item.serial).set(item).await()
-            Result.Success(null)
+            Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    suspend fun deleteInventoryItem(serial: String): Result<Void?> {
+    suspend fun deleteInventoryItem(serial: String): Result<Unit> {
         return try {
             inventoryRef.document(serial).delete().await()
-            Result.Success(null)
+            Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
@@ -72,6 +92,7 @@ class InventoryRepository {
         }
     }
 
+    // This method is kept for compatibility, but is not used for model autofill in TransactionScreen.
     suspend fun getInventoryItemBySerial(serial: String): Result<InventoryItem?> {
         return try {
             val snapshot = inventoryRef.document(serial).get().await()
