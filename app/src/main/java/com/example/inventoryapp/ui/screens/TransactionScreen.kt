@@ -14,8 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -79,9 +77,11 @@ fun TransactionScreen(
         images = uris?.take(3) ?: emptyList()
     }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
 
         OutlinedTextField(
             value = serialState,
@@ -95,7 +95,10 @@ fun TransactionScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        Button(onClick = { navController.navigate("barcode_scan") }, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = { navController.navigate("barcode_scan") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Scan Barcode")
         }
 
@@ -117,8 +120,7 @@ fun TransactionScreen(
             onValueChange = { phone = it },
             label = { Text("Phone") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            singleLine = true
         )
 
         Spacer(Modifier.height(8.dp))
@@ -127,8 +129,7 @@ fun TransactionScreen(
             onValueChange = { aadhaar = it },
             label = { Text("Aadhaar") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            singleLine = true
         )
 
         Spacer(Modifier.height(8.dp))
@@ -137,8 +138,7 @@ fun TransactionScreen(
             onValueChange = { amount = it },
             label = { Text("Amount") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            singleLine = true
         )
 
         Spacer(Modifier.height(8.dp))
@@ -147,8 +147,7 @@ fun TransactionScreen(
             onValueChange = { quantity = it },
             label = { Text("Quantity") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            singleLine = true
         )
 
         Spacer(Modifier.height(8.dp))
@@ -193,7 +192,11 @@ fun TransactionScreen(
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             images.forEach { uri ->
-                Image(painter = rememberAsyncImagePainter(uri), contentDescription = null, modifier = Modifier.size(64.dp))
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp)
+                )
             }
         }
 
