@@ -1,21 +1,23 @@
-// TransactionScreen.kt
 package com.example.inventoryapp.ui.screens
 
+import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
@@ -27,57 +29,78 @@ import java.util.*
 
 @Composable
 fun TransactionScreen(
-    navController: NavHostController,
+    navController: NavController,
     inventoryRepo: InventoryRepository,
-    serial: String
+    initialSerial: String = ""
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val savedState = navController.currentBackStackEntry?.savedStateHandle
+
+    var serial by remember { mutableStateOf(initialSerial) }
     var model by remember { mutableStateOf("") }
+    var isModelAuto by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
     var aadhaar by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
     var quantity by remember { mutableStateOf("1") }
-    var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var images by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(3)) { uris ->
-        if (uris != null) {
-            imageUris = uris.take(3)
+    // Handle scanned serial
+    LaunchedEffect(savedState?.get<String>("scannedSerial")) {
+        savedState?.get<String>("scannedSerial")?.let { code ->
+            serial = code
+            savedState.remove<String>("scannedSerial")
         }
     }
 
-    // Auto-fill model if serial is passed
+    // Auto-fetch model when serial changes
     LaunchedEffect(serial) {
         if (serial.isNotBlank()) {
-            val item = inventoryRepo.getItemBySerial(serial)
-            model = item?.model ?: ""
+            inventoryRepo.getItemBySerial(serial)?.let {
+                model = it.model
+                isModelAuto = true
+            }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
+    val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        images = uris?.take(3) ?: emptyList()
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
             value = serial,
-            onValueChange = { /* Serial is read-only from barcode */ },
+            onValueChange = {
+                serial = it
+                isModelAuto = false
+            },
             label = { Text("Serial") },
-            enabled = false,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = model,
-            onValueChange = { model = it },
-            label = { Text("Model") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { navController.navigate("barcode_scan") }, modifier = Modifier.fillMaxWidth()) {
+            Text("Scan Barcode")
+        }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = model,
+            onValueChange = { model = it; isModelAuto = false },
+            label = { Text("Model") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            readOnly = isModelAuto,
+            enabled = !isModelAuto,
+            trailingIcon = { if (isModelAuto) Icon(Icons.Default.Lock, contentDescription = "Auto-filled") }
+        )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = phone,
@@ -87,6 +110,7 @@ fun TransactionScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
         )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = aadhaar,
@@ -96,6 +120,7 @@ fun TransactionScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = amount,
@@ -105,6 +130,7 @@ fun TransactionScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = quantity,
@@ -114,14 +140,27 @@ fun TransactionScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = date,
-            onValueChange = { date = it },
+            onValueChange = {},
             label = { Text("Date") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            readOnly = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    val cal = Calendar.getInstance()
+                    DatePickerDialog(
+                        context,
+                        { _, y, m, d -> date = "%04d-%02d-%02d".format(y, m + 1, d) },
+                        cal.get(Calendar.YEAR),
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }
         )
+
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = description,
@@ -129,93 +168,62 @@ fun TransactionScreen(
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            },
-            modifier = Modifier.padding(bottom = 8.dp)
-        ) {
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { imgPicker.launch(PickVisualMediaRequest.Builder().setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly).build()) }) {
             Text("Add Images (Max 3)")
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            imageUris.forEach { uri ->
-                Image(
-                    painter = rememberAsyncImagePainter(uri),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp)
-                )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            images.forEach { uri ->
+                Image(painter = rememberAsyncImagePainter(uri), contentDescription = null, modifier = Modifier.size(64.dp))
             }
         }
 
         Spacer(Modifier.height(8.dp))
-
-        if (error != null) {
-            Text(error ?: "", color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(8.dp))
-        }
+        if (error != null) Text(text = error!!, color = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.height(8.dp))
 
         Button(
             onClick = {
                 error = null
-                val amountVal = amount.toDoubleOrNull()
-                val quantityVal = quantity.toIntOrNull()
-
-                if (model.isBlank() || serial.isBlank() || amountVal == null || quantityVal == null) {
-                    error = "Please check Model, Serial, Amount, and Quantity"
+                val amt = amount.toDoubleOrNull()
+                val qty = quantity.toIntOrNull()
+                if (serial.isBlank() || model.isBlank() || amt == null || amt <= 0 || qty == null || qty <= 0) {
+                    error = "Check Serial, Model, positive Amount & Quantity"
                     return@Button
                 }
-
                 loading = true
                 scope.launch {
                     try {
-                        val storage = FirebaseStorage.getInstance().reference
-                        val imageUrls = mutableListOf<String>()
-
-                        for (uri in imageUris) {
-                            val ref = storage.child("transactions/${UUID.randomUUID()}.jpg")
-                            ref.putFile(uri).await()
-                            imageUrls.add(ref.downloadUrl.await().toString())
+                        val stRef = FirebaseStorage.getInstance().reference
+                        val urls = mutableListOf<String>()
+                        images.forEach { u ->
+                            val ref = stRef.child("transactions/${UUID.randomUUID()}.jpg")
+                            ref.putFile(u).await()
+                            urls += ref.downloadUrl.await().toString()
                         }
-
-                        val trans = Transaction(
-                            type = "Sale",
-                            model = model,
-                            serial = serial,
-                            phone = phone,
-                            aadhaar = aadhaar,
-                            amount = amountVal,
-                            description = description,
-                            date = date,
-                            quantity = quantityVal,
-                            timestamp = System.currentTimeMillis(),
-                            imageUrls = imageUrls
+                        val txn = Transaction(
+                            type = "Sale", model = model, serial = serial,
+                            phone = phone, aadhaar = aadhaar,
+                            amount = amt, description = description, date = date,
+                            quantity = qty, timestamp = System.currentTimeMillis(), imageUrls = urls
                         )
-
-                        val result = inventoryRepo.addTransaction(trans)
-                        loading = false
-
-                        if (result is com.example.inventoryapp.data.Result.Success) {
-                            navController.popBackStack()
-                        } else {
-                            error = (result as com.example.inventoryapp.data.Result.Error).exception.message
+                        when (val res = inventoryRepo.addTransaction(txn)) {
+                            is com.example.inventoryapp.data.Result.Success -> navController.popBackStack()
+                            is com.example.inventoryapp.data.Result.Error -> error = res.exception.localizedMessage
                         }
                     } catch (e: Exception) {
-                        loading = false
-                        error = e.message
-                    }
+                        error = e.localizedMessage
+                    } finally { loading = false }
                 }
             },
             enabled = !loading,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (loading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                Text("Submit")
-            }
+            if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            else Text("Submit")
         }
     }
 }
