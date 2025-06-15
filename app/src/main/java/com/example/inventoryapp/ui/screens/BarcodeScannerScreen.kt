@@ -21,6 +21,8 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
+import androidx.compose.ui.Alignment
+import com.google.mlkit.vision.barcode.common.Barcode
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
