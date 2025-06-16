@@ -1,0 +1,13 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.InventoryApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Required Material 3 theme attributes -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/purple_700</item>
+
+        <!-- Optional system bar color -->
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimary</item>
+    </style>
+
+</resources>
