@@ -10,7 +10,7 @@
         android:allowBackup="true"
         android:label="Inventory App"
         android:supportsRtl="true"
-        android:theme="@style/Theme.InventoryApp">
+        android:theme="@android:style/Theme.Material.Light">
 
         <activity
             android:name=".MainActivity"
