@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
+import androidx.compose.ui.viewinterop.AndroidView
 import java.util.concurrent.Executors
 
 @Composable

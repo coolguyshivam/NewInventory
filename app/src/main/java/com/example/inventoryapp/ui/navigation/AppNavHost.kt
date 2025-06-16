@@ -125,7 +125,7 @@ fun AppNavHost(
             composable("barcodeScanner") {
                 showBottomBar = false
                 BarcodeScannerScreen(
-                    navController = navController,
+                    // If BarcodeScannerScreen expects navController, pass it; otherwise, remove this line
                     onBarcodeScanned = { scannedCode ->
                         navController.navigate("transaction/$scannedCode")
                     }
