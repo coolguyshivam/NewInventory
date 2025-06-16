@@ -66,12 +66,10 @@ fun BarcodeScannerScreen(
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
 @SuppressLint("UnsafeOptInUsageError")
 fun startCamera(
     context: Context,
-    previewView: PreviewView,
-    lifecycleOwner: androidx.lifecycle.LifecycleOwner,
+    ifecycleOwner: androidx.lifecycle.LifecycleOwner,
     onBarcodeScanned: (String) -> Unit
 ) {
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -85,7 +83,7 @@ fun startCamera(
         val barcodeScanner = BarcodeScanning.getClient()
 
         val analyzer = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720))
+            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
 
