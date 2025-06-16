@@ -75,7 +75,7 @@ fun BarcodeScannerScreen(
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
+@ExperimentalGetImage
 fun startCamera(
     context: Context,
     previewView: PreviewView,
