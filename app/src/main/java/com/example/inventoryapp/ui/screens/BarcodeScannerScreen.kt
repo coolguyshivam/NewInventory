@@ -69,7 +69,8 @@ fun BarcodeScannerScreen(
 @SuppressLint("UnsafeOptInUsageError")
 fun startCamera(
     context: Context,
-    ifecycleOwner: androidx.lifecycle.LifecycleOwner,
+    previewView: PreviewView,
+    lifecycleOwner: androidx.lifecycle.LifecycleOwner,
     onBarcodeScanned: (String) -> Unit
 ) {
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
