@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import androidx.camera.core.ExperimentalGetImage
 
+@OptIn(ExperimentalGetImage::class) // ✅ Needed for Lint to pass
 @Composable
 fun BarcodeScannerScreen(
     onBarcodeScanned: (String) -> Unit
@@ -48,7 +49,7 @@ fun BarcodeScannerScreen(
                     )
                 }
 
-                // ✅ Wrap startCamera in an opt-in lambda
+                // ✅ Runtime safety + clean Lint by also wrapping
                 @OptIn(ExperimentalGetImage::class)
                 fun bindCamera() {
                     startCamera(
@@ -104,7 +105,7 @@ fun startCamera(
         val barcodeScanner = BarcodeScanning.getClient(options)
 
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720)) // ✅ Modern API
+            .setTargetResolution(Size(1280, 720))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
