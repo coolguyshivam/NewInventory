@@ -1,158 +1,116 @@
 package com.example.inventoryapp.ui.screens
 
 import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
 import android.util.Log
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.camera.core.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updateLayoutParams
-import androidx.lifecycle.LifecycleOwner
-import com.google.accompanist.permissions.*
+import com.google.mlkit.vision.barcode.Barcode
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun BarcodeScannerScreen(
-    onBarcodeScanned: (String) -> Unit
+    onScanned: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    val lifecycleOwner = LocalLifecycleOwner.current
 
-    var scannedValue by remember { mutableStateOf<String?>(null) }
-    var isScanning by remember { mutableStateOf(true) }
-
-    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
+    var hasPermission by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasPermission = granted }
 
     LaunchedEffect(Unit) {
-        cameraPermissionState.launchPermissionRequest()
+        permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    if (cameraPermissionState.status.isGranted) {
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx).apply {
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                }
-                startCamera(
-                    ctx,
-                    previewView,
-                    onBarcodeDetected = { barcode ->
-                        if (isScanning && barcode != scannedValue) {
-                            scannedValue = barcode
-                            isScanning = false
-                            Toast.makeText(ctx, "Scanned: $barcode", Toast.LENGTH_SHORT).show()
-                            onBarcodeScanned(barcode)
-                        }
-                    },
-                    cameraExecutor = cameraExecutor,
-                    lifecycleOwner = lifecycleOwner
-                )
-                previewView
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = WindowInsetsCompat.Type.systemBars().let {
-                    ViewCompat.getInsets(context as ViewGroup, it).bottom.dp
-                })
-        )
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("Camera permission is required to scan barcodes.")
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                Text("Grant Permission")
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            hasPermission -> CameraPreviewSimple { code ->
+                Toast.makeText(context, "Scanned: $code", Toast.LENGTH_SHORT).show()
+                onScanned(code)
+            }
+            else -> {
+                CircularProgressIndicator()
+                Text("Waiting for camera permission…")
             }
         }
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
-fun startCamera(
-    context: Context,
-    previewView: PreviewView,
-    onBarcodeDetected: (String) -> Unit,
-    cameraExecutor: ExecutorService,
-    lifecycleOwner: LifecycleOwner
+@Composable
+fun CameraPreviewSimple(
+    onBarcode: (String) -> Unit
 ) {
-    val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-    cameraProviderFuture.addListener({
-        val cameraProvider = cameraProviderFuture.get()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val previewView = remember { PreviewView(context) }
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val scanned = remember { mutableStateOf(false) } // To only return one result
 
-        val preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
+    AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
+
+    DisposableEffect(lifecycleOwner) {
+        val cameraProvider = cameraProviderFuture.get()
+        val preview = Preview.Builder().build().apply {
+            setSurfaceProvider(previewView.surfaceProvider)
         }
 
-        val barcodeScanner = BarcodeScanning.getClient()
-        val imageAnalysis = ImageAnalysis.Builder()
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .build()
+        val scanner = BarcodeScanning.getClient(options)
+
+        val analysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
-
-        imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
+        analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy: ImageProxy ->
             val mediaImage = imageProxy.image
-            if (mediaImage != null) {
+            if (mediaImage != null && !scanned.value) {
                 val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                barcodeScanner.process(image)
+                scanner.process(image)
                     .addOnSuccessListener { barcodes ->
                         for (barcode in barcodes) {
                             barcode.rawValue?.let { value ->
-                                onBarcodeDetected(value)
-                                break // Only take first valid barcode
+                                if (!scanned.value) {
+                                    scanned.value = true
+                                    onBarcode(value)
+                                }
                             }
                         }
                     }
-                    .addOnFailureListener {
-                        Log.e("BarcodeScanner", "Barcode scanning failed", it)
-                    }
-                    .addOnCompleteListener {
-                        imageProxy.close()
-                    }
+                    .addOnFailureListener { Log.e("Barcode", "Scan error", it) }
+                    .addOnCompleteListener { imageProxy.close() }
             } else {
                 imageProxy.close()
             }
         }
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        cameraProvider.unbindAll()
+        cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analysis)
 
-        try {
+        onDispose {
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                preview,
-                imageAnalysis
-            )
-        } catch (e: Exception) {
-            Log.e("BarcodeScanner", "Camera binding failed", e)
         }
-
-    }, ContextCompat.getMainExecutor(context))
+    }
 }
