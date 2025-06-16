@@ -28,7 +28,6 @@ import androidx.camera.core.ExperimentalGetImage
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
-@Composable
 fun BarcodeScannerScreen(
     onBarcodeScanned: (String) -> Unit
 ) {
