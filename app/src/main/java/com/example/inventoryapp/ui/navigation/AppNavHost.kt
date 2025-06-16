@@ -35,7 +35,10 @@ sealed class MainScreen(val route: String, val label: String, val icon: @Composa
 }
 
 @Composable
-fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
+fun AppNavHost(
+    authRepo: AuthRepository,
+    inventoryRepo: InventoryRepository
+) {
     val navController = rememberNavController()
     var showBottomBar by remember { mutableStateOf(true) }
 
@@ -102,7 +105,7 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                     navArgument("serial") {
                         type = NavType.StringType
                         defaultValue = ""
-                        nullable = true
+                        nullable = false
                     }
                 )
             ) { backStackEntry ->
