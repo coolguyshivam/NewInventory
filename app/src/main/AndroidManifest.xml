@@ -1,16 +1,28 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.inventoryapp">
+
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
-	<uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Camera feature declaration (safe for ChromeOS) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
+        android:name=".App" <!-- ✅ Important: Initializes Firebase -->
         android:allowBackup="true"
         android:label="Inventory App"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light">
-        <activity android:name=".App" android:exported="true">
+        android:theme="@style/Theme.InventoryApp"> <!-- ✅ Use your Compose Material 3 theme -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.InventoryApp"> <!-- Optional, consistent theme -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 </manifest>

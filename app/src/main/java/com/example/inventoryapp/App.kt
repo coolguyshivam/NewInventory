@@ -9,43 +9,22 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 
 class App : Application() {
-
     override fun onCreate() {
         super.onCreate()
 
-        // Initialize Firebase
         try {
             FirebaseApp.initializeApp(this)
             Log.d("AppInit", "Firebase initialized")
-        } catch (e: Exception) {
-            Log.e("AppInit", "Firebase init failed", e)
-        }
 
-        // Enable Firebase Analytics
-        try {
-            FirebaseAnalytics.getInstance(this)
-            Log.d("AppInit", "Firebase Analytics initialized")
-        } catch (e: Exception) {
-            Log.e("AppInit", "Analytics init failed", e)
-        }
-
-        // Enable Crashlytics
-        try {
-            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
-            Log.d("AppInit", "Crashlytics enabled")
-        } catch (e: Exception) {
-            Log.e("AppInit", "Crashlytics init failed", e)
-        }
-
-        // Enable Firestore persistence
-        try {
-            val settings = FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true) // ✅ works across SDK versions
-                .build()
+            // Firestore: Modern, warning-free setup
+            val settings = FirebaseFirestoreSettings.Builder().build()
             FirebaseFirestore.getInstance().firestoreSettings = settings
-            Log.d("AppInit", "Firestore initialized with persistence")
+
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+            FirebaseAnalytics.getInstance(this)
+
         } catch (e: Exception) {
-            Log.e("AppInit", "Firestore init failed", e)
+            Log.e("AppInit", "Firebase setup failed", e)
         }
     }
 }
