@@ -120,14 +120,14 @@ fun AppNavHost(authRepo: AuthRepository, inventoryRepo: InventoryRepository) {
                 AddEditItemScreen(navController, inventoryRepo, itemId)
             }
             composable("barcodeScanner") {
-				BarcodeScannerScreen(
-					navController = navController,
-					onBarcodeScanned = { scannedCode ->
-						// Navigate to TransactionScreen with the scanned code
-						navController.navigate("transactionScreen?serial=$scannedCode")
-					}
-				)
-			}
+                showBottomBar = false
+                BarcodeScannerScreen(
+                    navController = navController,
+                    onBarcodeScanned = { scannedCode ->
+                        navController.navigate("transaction/$scannedCode")
+                    }
+                )
+            }
         }
     }
 }
