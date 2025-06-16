@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 
 class App : Application() {
 
@@ -13,28 +14,36 @@ class App : Application() {
         super.onCreate()
 
         // Initialize Firebase
-        FirebaseApp.initializeApp(this)
-
-        // Initialize Firebase Analytics
         try {
-            FirebaseAnalytics.getInstance(this)
+            FirebaseApp.initializeApp(this)
+            Log.d("AppInit", "Firebase initialized")
         } catch (e: Exception) {
-            Log.e("AppInit", "FirebaseAnalytics init failed", e)
+            Log.e("AppInit", "Firebase init failed", e)
         }
 
-        // Initialize Crashlytics and enable crash reporting
+        // Enable Firebase Analytics
+        try {
+            FirebaseAnalytics.getInstance(this)
+            Log.d("AppInit", "Firebase Analytics initialized")
+        } catch (e: Exception) {
+            Log.e("AppInit", "Analytics init failed", e)
+        }
+
+        // Enable Crashlytics
         try {
             FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+            Log.d("AppInit", "Crashlytics enabled")
         } catch (e: Exception) {
             Log.e("AppInit", "Crashlytics init failed", e)
         }
 
-        // Initialize Firestore (optional pre-warming)
+        // Enable Firestore persistence
         try {
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.firestoreSettings = firestore.firestoreSettings.toBuilder()
-                .setPersistenceEnabled(true) // Offline support
+            val settings = FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true) // ✅ works across SDK versions
                 .build()
+            FirebaseFirestore.getInstance().firestoreSettings = settings
+            Log.d("AppInit", "Firestore initialized with persistence")
         } catch (e: Exception) {
             Log.e("AppInit", "Firestore init failed", e)
         }
