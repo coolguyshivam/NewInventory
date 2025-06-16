@@ -15,7 +15,9 @@ android {
         versionCode 1
         versionName "1.0"
     }
-
+	lint {
+        lintConfig file("lint.xml")
+    }
     buildTypes {
         release {
             minifyEnabled false
