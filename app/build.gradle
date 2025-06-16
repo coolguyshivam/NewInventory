@@ -57,6 +57,11 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-firestore-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
+	implementation 'com.google.firebase:firebase-analytics'
+	implementation 'com.google.firebase:firebase-auth'
+	implementation 'com.google.firebase:firebase-crashlytics'
+	implementation 'com.google.firebase:firebase-firestore'
+
 
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
@@ -89,6 +94,5 @@ dependencies {
 
     // Accompanist Permissions
     implementation "com.google.accompanist:accompanist-permissions:0.28.0"
-
 
 }
