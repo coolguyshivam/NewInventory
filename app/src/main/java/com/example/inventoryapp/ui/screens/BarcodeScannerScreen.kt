@@ -2,6 +2,7 @@ package com.example.inventoryapp.ui.screens
 
 import android.content.Context
 import android.util.Log
+import android.util.Size
 import android.view.ViewGroup
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -16,17 +17,16 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import androidx.camera.core.ExperimentalGetImage
 
-@OptIn(ExperimentalGetImage::class)
 @Composable
 fun BarcodeScannerScreen(
     onBarcodeScanned: (String) -> Unit
@@ -48,19 +48,24 @@ fun BarcodeScannerScreen(
                     )
                 }
 
-                startCamera(
-                    context = ctx,
-                    previewView = previewView,
-                    lifecycleOwner = lifecycleOwner
-                ) { barcode ->
-                    if (scannedCode == null && barcode.all { it.isDigit() }) {
-                        scannedCode = barcode
-                        coroutineScope.launch(Dispatchers.Main) {
-                            onBarcodeScanned(barcode)
+                // ✅ Wrap startCamera in an opt-in lambda
+                @OptIn(ExperimentalGetImage::class)
+                fun bindCamera() {
+                    startCamera(
+                        context = ctx,
+                        previewView = previewView,
+                        lifecycleOwner = lifecycleOwner
+                    ) { barcode ->
+                        if (scannedCode == null && barcode.all { it.isDigit() }) {
+                            scannedCode = barcode
+                            coroutineScope.launch(Dispatchers.Main) {
+                                onBarcodeScanned(barcode)
+                            }
                         }
                     }
                 }
 
+                bindCamera()
                 previewView
             },
             modifier = Modifier.fillMaxSize()
@@ -99,7 +104,7 @@ fun startCamera(
         val barcodeScanner = BarcodeScanning.getClient(options)
 
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+            .setTargetResolution(Size(1280, 720)) // ✅ Modern API
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
