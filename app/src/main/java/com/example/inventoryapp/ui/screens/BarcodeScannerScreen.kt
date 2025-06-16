@@ -89,7 +89,7 @@ fun startCamera(
         }
 
         val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(FORMAT_ALL_FORMATS)
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
             .build()
 
         val barcodeScanner = BarcodeScanning.getClient(options)
