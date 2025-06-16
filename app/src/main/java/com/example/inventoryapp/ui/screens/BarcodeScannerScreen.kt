@@ -2,7 +2,6 @@ package com.example.inventoryapp.ui.screens
 
 import android.content.Context
 import android.util.Log
-import android.util.Size
 import android.view.ViewGroup
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -17,9 +16,10 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.Barcode
+import com.google.mlkit.vision.barcode.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,7 +74,6 @@ fun BarcodeScannerScreen(
     }
 }
 
-@androidx.camera.core.ExperimentalGetImage
 fun startCamera(
     context: Context,
     previewView: PreviewView,
@@ -91,13 +90,13 @@ fun startCamera(
         }
 
         val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .setBarcodeFormats(FORMAT_ALL_FORMATS)
             .build()
 
         val barcodeScanner = BarcodeScanning.getClient(options)
 
         val imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720)) // ✅ Recommended over setTargetAspectRatio
+            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
