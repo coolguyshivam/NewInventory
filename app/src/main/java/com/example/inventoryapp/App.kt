@@ -11,11 +11,11 @@ class App : Application() {
         super.onCreate()
 
         try {
-            FirebaseApp.initializeApp(this)
-            Log.d("AppInit", "Firebase initialized")
+          //  FirebaseApp.initializeApp(this)
+          //  Log.d("AppInit", "Firebase initialized")
 
-            FirebaseFirestore.getInstance().firestoreSettings =
-                FirebaseFirestoreSettings.Builder().build()
+          //  FirebaseFirestore.getInstance().firestoreSettings =
+          //     FirebaseFirestoreSettings.Builder().build()
 
         } catch (e: Exception) {
             Log.e("AppInit", "Firebase setup failed", e)
