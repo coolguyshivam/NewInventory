@@ -5,12 +5,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.navigation.AppNavHost
 import com.example.inventoryapp.ui.theme.InventoryAppTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,17 +42,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Place this BottomBar composable in the same file or in a suitable location in your project
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
-
-data class BottomNavItem(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+data class BottomNavItem(val route: String, val label: String, val icon: ImageVector)
 
 @Composable
 fun BottomBar(navController: NavController) {
