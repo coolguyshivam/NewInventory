@@ -9,13 +9,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.inventoryapp.data.Result
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.ui.components.InventoryCard
+import com.example.inventoryapp.data.Result
 
 @Composable
 fun InventoryScreen(

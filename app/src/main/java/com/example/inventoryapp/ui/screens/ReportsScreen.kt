@@ -7,11 +7,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.example.inventoryapp.data.Result
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
+import com.example.inventoryapp.data.Result
 import java.util.Date
 
 @Composable
