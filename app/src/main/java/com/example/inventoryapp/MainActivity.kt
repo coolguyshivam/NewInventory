@@ -21,6 +21,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

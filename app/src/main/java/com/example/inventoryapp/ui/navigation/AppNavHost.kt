@@ -10,6 +10,8 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.InventoryScreen
 import com.example.inventoryapp.ui.screens.ReportsScreen
 import com.example.inventoryapp.ui.screens.TransactionScreen
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
 
 @Composable
 fun AppNavHost(

@@ -1,8 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
-import android.content.Context
 import android.util.Log
-import android.util.Size
 import android.view.ViewGroup
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -19,7 +17,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,7 +30,11 @@ fun BarcodeScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
+    // Properly shut down the executor to prevent leak
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    DisposableEffect(Unit) {
+        onDispose { cameraExecutor.shutdown() }
+    }
 
     var scannedCode by remember { mutableStateOf<String?>(null) }
 
@@ -50,7 +52,8 @@ fun BarcodeScannerScreen(
                     startCamera(
                         context = ctx,
                         previewView = previewView,
-                        lifecycleOwner = lifecycleOwner
+                        lifecycleOwner = lifecycleOwner,
+                        cameraExecutor = cameraExecutor
                     ) { barcode ->
                         if (scannedCode == null && barcode.all { it.isDigit() }) {
                             scannedCode = barcode
@@ -68,72 +71,39 @@ fun BarcodeScannerScreen(
         )
 
         if (scannedCode == null) {
-            CircularProgressIndicator(
+            Box(
                 modifier = Modifier
-                    .size(64.dp)
-                    .align(Alignment.Center)
-            )
+                    .fillMaxSize()
+                    .padding(top = 32.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
 }
 
-// You can keep this annotation for documentation, but it's not required for lint
-fun startCamera(
-    context: Context,
+private fun startCamera(
+    context: android.content.Context,
     previewView: PreviewView,
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
-    onBarcodeDetected: (String) -> Unit
+    cameraExecutor: java.util.concurrent.Executor,
+    onBarcodeScanned: (String) -> Unit
 ) {
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-
     cameraProviderFuture.addListener({
         val cameraProvider = cameraProviderFuture.get()
-
-        val preview = Preview.Builder().build().apply {
-            setSurfaceProvider(previewView.surfaceProvider)
+        val preview = Preview.Builder().build().also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
         }
 
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(FORMAT_ALL_FORMATS)
-            .build()
-
-        val barcodeScanner = BarcodeScanning.getClient(options)
-
+        // Don't setTargetAspectRatio or setTargetResolution (deprecated)
         val imageAnalyzer = ImageAnalysis.Builder()
-            // Optionally, switch to AspectRatio if you don't need exact resolution:
-            // .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
-                it.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                    val mediaImage = imageProxy.image
-                    if (mediaImage != null) {
-                        val image = InputImage.fromMediaImage(
-                            mediaImage,
-                            imageProxy.imageInfo.rotationDegrees
-                        )
-
-                        barcodeScanner.process(image)
-                            .addOnSuccessListener { barcodes ->
-                                for (barcode in barcodes) {
-                                    val value = barcode.rawValue ?: continue
-                                    if (value.all { it.isDigit() }) {
-                                        Log.d("Scanner", "Scanned IMEI: $value")
-                                        onBarcodeDetected(value)
-                                        break
-                                    }
-                                }
-                            }
-                            .addOnFailureListener {
-                                Log.e("Scanner", "Error processing barcode", it)
-                            }
-                            .addOnCompleteListener {
-                                imageProxy.close()
-                            }
-                    } else {
-                        imageProxy.close()
-                    }
+                it.setAnalyzer(cameraExecutor) { imageProxy ->
+                    processImageProxy(imageProxy, onBarcodeScanned)
                 }
             }
 
@@ -149,4 +119,31 @@ fun startCamera(
             Log.e("CameraX", "Camera bind failed", e)
         }
     }, ContextCompat.getMainExecutor(context))
+}
+
+private fun processImageProxy(
+    imageProxy: ImageProxy,
+    onBarcodeScanned: (String) -> Unit
+) {
+    val mediaImage = imageProxy.image
+    if (mediaImage != null) {
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .build()
+        val scanner = BarcodeScanning.getClient(options)
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                for (barcode in barcodes) {
+                    barcode.rawValue?.let { value ->
+                        onBarcodeScanned(value)
+                        break
+                    }
+                }
+            }
+            .addOnFailureListener { /* Handle error if desired */ }
+            .addOnCompleteListener { imageProxy.close() }
+    } else {
+        imageProxy.close()
+    }
 }
