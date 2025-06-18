@@ -8,6 +8,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +19,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -63,7 +64,13 @@ fun TransactionScreen(
     var quantityError by remember { mutableStateOf<String?>(null) }
 
     // Focus Requesters
-    val (serialFocus, modelFocus, phoneFocus, aadhaarFocus, amountFocus, descriptionFocus, quantityFocus) = List(7) { remember { FocusRequester() } }
+    val serialFocus = remember { FocusRequester() }
+    val modelFocus = remember { FocusRequester() }
+    val phoneFocus = remember { FocusRequester() }
+    val aadhaarFocus = remember { FocusRequester() }
+    val amountFocus = remember { FocusRequester() }
+    val descriptionFocus = remember { FocusRequester() }
+    val quantityFocus = remember { FocusRequester() }
 
     // For date picker validation (no future dates)
     fun isDateValid(selected: Calendar): Boolean {
@@ -130,7 +137,7 @@ fun TransactionScreen(
                 singleLine = true,
                 isError = serialError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { modelFocus.requestFocus() }
                 ),
                 enabled = !loading
@@ -163,7 +170,7 @@ fun TransactionScreen(
                 enabled = !isModelAuto && !loading,
                 isError = modelError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { phoneFocus.requestFocus() }
                 )
             )
@@ -184,7 +191,7 @@ fun TransactionScreen(
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { aadhaarFocus.requestFocus() }
                 ),
                 enabled = !loading
@@ -203,7 +210,7 @@ fun TransactionScreen(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { amountFocus.requestFocus() }
                 ),
                 enabled = !loading
@@ -228,7 +235,7 @@ fun TransactionScreen(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { descriptionFocus.requestFocus() }
                 ),
                 enabled = !loading
@@ -246,7 +253,7 @@ fun TransactionScreen(
                     .fillMaxWidth()
                     .focusRequester(descriptionFocus),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onNext = { quantityFocus.requestFocus() }
                 ),
                 enabled = !loading
@@ -302,7 +309,7 @@ fun TransactionScreen(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onDone = { focusManager.clearFocus() }
                 ),
                 enabled = !loading
