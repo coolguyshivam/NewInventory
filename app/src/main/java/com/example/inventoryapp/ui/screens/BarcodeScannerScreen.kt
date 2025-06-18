@@ -1,5 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
+import android.content.Context
 import android.util.Log
 import android.view.ViewGroup
 import androidx.camera.core.*
@@ -17,7 +18,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -84,7 +85,7 @@ fun BarcodeScannerScreen(
 }
 
 private fun startCamera(
-    context: android.content.Context,
+    context: Context,
     previewView: PreviewView,
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
     cameraExecutor: java.util.concurrent.Executor,
@@ -97,7 +98,6 @@ private fun startCamera(
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
 
-        // Don't setTargetAspectRatio or setTargetResolution (deprecated)
         val imageAnalyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
@@ -129,15 +129,17 @@ private fun processImageProxy(
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .setBarcodeFormats(FORMAT_ALL_FORMATS)
             .build()
         val scanner = BarcodeScanning.getClient(options)
         scanner.process(image)
             .addOnSuccessListener { barcodes ->
+                // Use a regular for loop, not forEach!
                 for (barcode in barcodes) {
-                    barcode.rawValue?.let { value ->
+                    val value = barcode.rawValue ?: continue
+                    if (value.all { it.isDigit() }) {
                         onBarcodeScanned(value)
-                        break
+                        break // This is now legal!
                     }
                 }
             }
