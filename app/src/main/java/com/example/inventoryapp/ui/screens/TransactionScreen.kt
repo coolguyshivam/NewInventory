@@ -213,7 +213,9 @@ fun TransactionScreen(
             OutlinedTextField(
                 value = amount,
                 onValueChange = {
-                    amount = it.filter { ch -> ch.isDigit() }
+                    // allow only digits and a single decimal point
+                    val filtered = it.filterIndexed { idx, ch -> ch.isDigit() || (ch == '.' && !it.take(idx).contains('.')) }
+                    amount = filtered
                     amountError = null
                 },
                 label = { Text("Amount") },
@@ -311,7 +313,7 @@ fun TransactionScreen(
 
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick = { imgPicker.launch(ActivityResultContracts.PickVisualMedia.ImageOnly) },
+                onClick = { imgPicker.launch(null) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !loading
             ) {
@@ -355,11 +357,11 @@ fun TransactionScreen(
                         modelError = "Model is required"
                         valid = false
                     }
-                    val amountInt = amount.toIntOrNull()
+                    val amountDouble = amount.toDoubleOrNull()
                     if (amount.isBlank()) {
                         amountError = "Amount is required"
                         valid = false
-                    } else if (amountInt == null || amountInt <= 0) {
+                    } else if (amountDouble == null || amountDouble <= 0.0) {
                         amountError = "Enter a valid positive number"
                         valid = false
                     }
@@ -394,7 +396,7 @@ fun TransactionScreen(
                                 model = model,
                                 phone = phone,
                                 aadhaar = aadhaar,
-                                amount = amountInt ?: 0,
+                                amount = amountDouble ?: 0.0,
                                 description = description,
                                 date = date,
                                 quantity = quantityInt ?: 1,
