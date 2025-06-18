@@ -9,8 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,9 +19,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -76,7 +72,7 @@ fun TransactionScreen(
     }
 
     val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-        images = uris?.take(3) ?: emptyList()
+        images = uris?.take(5) ?: emptyList()
     }
 
     Column(
@@ -188,7 +184,7 @@ fun TransactionScreen(
             onClick = { imgPicker.launch(ActivityResultContracts.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Pick Images (max 3)")
+            Text("Pick Images (max 5)")
         }
 
         if (images.isNotEmpty()) {
@@ -211,8 +207,65 @@ fun TransactionScreen(
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
-                // Validate and save transaction here
-                // Set loading = true while saving
+                loading = true
+                error = null
+
+                // Simple validation
+                if (serialState.isBlank() || model.isBlank() || amount.isBlank() || quantity.isBlank()) {
+                    error = "Please fill all required fields."
+                    loading = false
+                    return@Button
+                }
+
+                val amountInt = amount.toIntOrNull()
+                val quantityInt = quantity.toIntOrNull()
+                if (amountInt == null || quantityInt == null) {
+                    error = "Amount and Quantity must be numbers."
+                    loading = false
+                    return@Button
+                }
+
+                scope.launch {
+                    try {
+                        // --- Image upload ---
+                        val imageUrls = mutableListOf<String>()
+                        if (images.isNotEmpty()) {
+                            for ((index, uri) in images.withIndex()) {
+                                val fileName = "${serialState}_${System.currentTimeMillis()}_$index.jpg"
+                                when (val uploadResult = inventoryRepo.uploadImage(uri, fileName)) {
+                                    is Result.Success -> imageUrls.add(uploadResult.data)
+                                    is Result.Error -> {
+                                        error = "Image upload failed: ${uploadResult.exception?.message ?: ""}"
+                                        loading = false
+                                        return@launch
+                                    }
+                                }
+                            }
+                        }
+                        // --- Save transaction ---
+                        val transaction = Transaction(
+                            serial = serialState,
+                            model = model,
+                            phone = phone,
+                            aadhaar = aadhaar,
+                            amount = amountInt,
+                            description = description,
+                            date = date,
+                            quantity = quantityInt,
+                            imageUrls = imageUrls // Will be empty if no images
+                        )
+                        val result = inventoryRepo.addTransaction(transaction)
+                        loading = false
+                        if (result is Result.Success) {
+                            navController.popBackStack()
+                        } else if (result is Result.Error) {
+                            error = result.exception?.message ?: "Error saving transaction."
+                        }
+                    } catch (e: Exception) {
+                        loading = false
+                        error = e.message ?: "Unknown error occurred"
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading
