@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
@@ -26,12 +27,11 @@ import java.util.concurrent.Executors
 
 @Composable
 fun BarcodeScannerScreen(
-    onBarcodeScanned: (String) -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
-    // Properly shut down the executor to prevent leak
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
         onDispose { cameraExecutor.shutdown() }
@@ -59,7 +59,11 @@ fun BarcodeScannerScreen(
                         if (scannedCode == null && barcode.all { it.isDigit() }) {
                             scannedCode = barcode
                             coroutineScope.launch(Dispatchers.Main) {
-                                onBarcodeScanned(barcode)
+                                // Save to previous entry’s savedStateHandle and pop
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set("scannedSerial", barcode)
+                                navController.popBackStack()
                             }
                         }
                     }
@@ -139,7 +143,7 @@ private fun processImageProxy(
                     val value = barcode.rawValue ?: continue
                     if (value.all { it.isDigit() }) {
                         onBarcodeScanned(value)
-                        break // This is now legal!
+                        break
                     }
                 }
             }
