@@ -102,7 +102,7 @@ fun startCamera(
         val imageAnalyzer = ImageAnalysis.Builder()
             // Optionally, switch to AspectRatio if you don't need exact resolution:
             // .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-            .setTargetResolution(Size(1280, 720))
+            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also {
