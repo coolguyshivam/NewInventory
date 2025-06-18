@@ -13,7 +13,7 @@ import com.example.inventoryapp.ui.theme.InventoryAppTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.navigation.NavController
@@ -47,9 +47,9 @@ data class BottomNavItem(val route: String, val label: String, val icon: ImageVe
 @Composable
 fun BottomBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("inventory", "Inventory", Icons.Default.List),
-        BottomNavItem("transaction", "Transaction", Icons.Default.SwapHoriz),
-        BottomNavItem("reports", "Reports", Icons.Default.Receipt)
+        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List),
+        BottomNavItem("transaction", "Transaction", Icons.Filled.SwapHoriz),
+        BottomNavItem("reports", "Reports", Icons.Filled.Receipt)
     )
     NavigationBar {
         val navBackStackEntry = navController.currentBackStackEntryAsState().value
