@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.data.Result
@@ -36,7 +37,7 @@ fun ReportsScreen(inventoryRepo: InventoryRepository) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
