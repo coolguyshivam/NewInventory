@@ -19,7 +19,9 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -94,7 +96,7 @@ fun TransactionScreen(
 
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = { navController.navigate("barcode_scanner") },
+            onClick = { navController.navigate("barcode_scanner") }, // This must match your navGraph!
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Scan Barcode")
@@ -148,7 +150,7 @@ fun TransactionScreen(
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = date,
-            onValueChange = { date = it },
+            onValueChange = { /* Date should only be changed via the picker */ },
             label = { Text("Date") },
             modifier = Modifier
                 .fillMaxWidth()
@@ -181,7 +183,7 @@ fun TransactionScreen(
 
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = { imgPicker.launch(ActivityResultContracts.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onClick = { imgPicker.launch(ActivityResultContracts.PickVisualMedia.ImageOnly) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Pick Images (max 5)")
@@ -230,16 +232,11 @@ fun TransactionScreen(
                         // --- Image upload ---
                         val imageUrls = mutableListOf<String>()
                         if (images.isNotEmpty()) {
+                            val storage = FirebaseStorage.getInstance().reference
                             for ((index, uri) in images.withIndex()) {
-                                val fileName = "${serialState}_${System.currentTimeMillis()}_$index.jpg"
-                                when (val uploadResult = inventoryRepo.uploadImage(uri, fileName)) {
-                                    is Result.Success -> imageUrls.add(uploadResult.data)
-                                    is Result.Error -> {
-                                        error = "Image upload failed: ${uploadResult.exception?.message ?: ""}"
-                                        loading = false
-                                        return@launch
-                                    }
-                                }
+                                val ref = storage.child("transactions/${serialState}_${System.currentTimeMillis()}_$index.jpg")
+                                ref.putFile(uri).await()
+                                imageUrls += ref.downloadUrl.await().toString()
                             }
                         }
                         // --- Save transaction ---
