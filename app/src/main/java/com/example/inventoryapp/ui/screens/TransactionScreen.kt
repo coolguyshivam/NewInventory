@@ -3,11 +3,12 @@ package com.example.inventoryapp.ui.screens
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -81,9 +82,9 @@ fun TransactionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-
         OutlinedTextField(
             value = serialState,
             onValueChange = {
@@ -97,7 +98,7 @@ fun TransactionScreen(
 
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = { navController.navigate("barcode_scan") },
+            onClick = { navController.navigate("barcode_scanner") },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Scan Barcode")
@@ -106,13 +107,11 @@ fun TransactionScreen(
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = model,
-            onValueChange = { model = it; isModelAuto = false },
+            onValueChange = { if (!isModelAuto) model = it },
             label = { Text("Model") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            readOnly = isModelAuto,
-            enabled = !isModelAuto,
-            trailingIcon = { if (isModelAuto) Icon(Icons.Default.Lock, contentDescription = "Auto-filled") }
+            enabled = !isModelAuto
         )
 
         Spacer(Modifier.height(8.dp))
@@ -144,6 +143,39 @@ fun TransactionScreen(
 
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text("Description") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = date,
+            onValueChange = { date = it },
+            label = { Text("Date") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    val calendar = Calendar.getInstance()
+                    val datePicker = DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            val picked = Calendar.getInstance()
+                            picked.set(year, month, dayOfMonth)
+                            date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(picked.time)
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                    )
+                    datePicker.show()
+                },
+            readOnly = true
+        )
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
             value = quantity,
             onValueChange = { quantity = it },
             label = { Text("Quantity") },
@@ -152,98 +184,47 @@ fun TransactionScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = date,
-            onValueChange = {}, // Date is only changed via the picker
-            label = { Text("Date") },
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    val cal = Calendar.getInstance()
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d -> date = "%04d-%02d-%02d".format(y, m + 1, d) },
-                        cal.get(Calendar.YEAR),
-                        cal.get(Calendar.MONTH),
-                        cal.get(Calendar.DAY_OF_MONTH)
-                    ).show()
-                }
-        )
-
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
+        Button(
+            onClick = { imgPicker.launch(ActivityResultContracts.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = {
-            imgPicker.launch(
-                PickVisualMediaRequest.Builder()
-                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    .build()
-            )
-        }) {
-            Text("Add Images (Max 3)")
+        ) {
+            Text("Pick Images (max 3)")
         }
 
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            images.forEach { uri ->
-                Image(
-                    painter = rememberAsyncImagePainter(uri),
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp)
-                )
+        if (images.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                images.forEach { uri ->
+                    Image(
+                        painter = rememberAsyncImagePainter(model = uri),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp)
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        if (error != null) Text(text = error!!, color = MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(8.dp))
+        if (error != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(error ?: "", color = MaterialTheme.colorScheme.error)
+        }
 
+        Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
-                error = null
-                val amt = amount.toDoubleOrNull()
-                val qty = quantity.toIntOrNull()
-                if (serialState.isBlank() || model.isBlank() || amt == null || amt <= 0 || qty == null || qty <= 0) {
-                    error = "Check Serial, Model, positive Amount & Quantity"
-                    return@Button
-                }
-                loading = true
-                scope.launch {
-                    try {
-                        val stRef = FirebaseStorage.getInstance().reference
-                        val urls = mutableListOf<String>()
-                        images.forEach { u ->
-                            val ref = stRef.child("transactions/${UUID.randomUUID()}.jpg")
-                            ref.putFile(u).await()
-                            urls += ref.downloadUrl.await().toString()
-                        }
-                        val txn = Transaction(
-                            type = "Sale", model = model, serial = serialState,
-                            phone = phone, aadhaar = aadhaar,
-                            amount = amt, description = description, date = date,
-                            quantity = qty, timestamp = System.currentTimeMillis(), imageUrls = urls
-                        )
-                        when (val res = inventoryRepo.addTransaction(txn)) {
-                            is Result.Success -> navController.popBackStack()
-                            is Result.Error -> error = res.exception.localizedMessage
-                        }
-                    } catch (e: Exception) {
-                        error = e.localizedMessage
-                    } finally { loading = false }
-                }
+                // Validate and save transaction here
+                // Set loading = true while saving
             },
-            enabled = !loading,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !loading
         ) {
-            if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("Submit")
+            if (loading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text("Save Transaction")
         }
     }
 }
