@@ -15,9 +15,14 @@ import com.example.inventoryapp.ui.screens.TransactionScreen
 fun AppNavHost(
     authRepo: AuthRepository,
     inventoryRepo: InventoryRepository,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    modifier: Modifier = Modifier // add this
 ) {
-    NavHost(navController = navController, startDestination = "inventory") {
+    NavHost(
+        navController = navController,
+        startDestination = "inventory",
+        modifier = modifier // <-- use modifier here
+    ) {
         composable("inventory") {
             InventoryScreen(navController, inventoryRepo, authRepo)
         }

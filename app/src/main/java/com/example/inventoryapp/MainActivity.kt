@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
@@ -12,7 +13,6 @@ import com.example.inventoryapp.ui.navigation.AppNavHost
 import com.example.inventoryapp.ui.theme.InventoryAppTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -34,7 +34,8 @@ class MainActivity : ComponentActivity() {
                     AppNavHost(
                         authRepo = AuthRepository(),
                         inventoryRepo = InventoryRepository(),
-                        navController = navController
+                        navController = navController,
+                        modifier = Modifier.padding(innerPadding) // <-- Fixes the lint error
                     )
                 }
             }
@@ -47,7 +48,7 @@ data class BottomNavItem(val route: String, val label: String, val icon: ImageVe
 @Composable
 fun BottomBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List),
+        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List), // <-- Fixes the deprecation warning
         BottomNavItem("transaction", "Transaction", Icons.Filled.SwapHoriz),
         BottomNavItem("reports", "Reports", Icons.Filled.Receipt)
     )
