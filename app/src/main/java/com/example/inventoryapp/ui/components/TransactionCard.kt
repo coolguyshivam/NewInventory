@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import com.example.inventoryapp.model.Transaction
 
 // Move this to model/Transaction.kt if used elsewhere!
 data class Transaction(
