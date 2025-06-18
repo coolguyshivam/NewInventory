@@ -19,15 +19,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
-import androidx.camera.core.ExperimentalGetImage
 
-@OptIn(ExperimentalGetImage::class) // ✅ Needed for Lint to pass
 @Composable
 fun BarcodeScannerScreen(
     onBarcodeScanned: (String) -> Unit
@@ -49,8 +46,6 @@ fun BarcodeScannerScreen(
                     )
                 }
 
-                // ✅ Runtime safety + clean Lint by also wrapping
-                @OptIn(ExperimentalGetImage::class)
                 fun bindCamera() {
                     startCamera(
                         context = ctx,
@@ -82,7 +77,7 @@ fun BarcodeScannerScreen(
     }
 }
 
-@ExperimentalGetImage
+// You can keep this annotation for documentation, but it's not required for lint
 fun startCamera(
     context: Context,
     previewView: PreviewView,
@@ -105,6 +100,8 @@ fun startCamera(
         val barcodeScanner = BarcodeScanning.getClient(options)
 
         val imageAnalyzer = ImageAnalysis.Builder()
+            // Optionally, switch to AspectRatio if you don't need exact resolution:
+            // .setTargetAspectRatio(AspectRatio.RATIO_16_9)
             .setTargetResolution(Size(1280, 720))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
