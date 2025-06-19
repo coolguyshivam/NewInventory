@@ -1,21 +1,30 @@
 package com.example.inventoryapp.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun TransactionScreen(
     navController: NavController,
@@ -34,6 +43,7 @@ fun TransactionScreen(
     var date by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSuccess by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     // Barcode scan integration
@@ -53,7 +63,7 @@ fun TransactionScreen(
         DatePickerDialog(
             context,
             { _, y, m, d ->
-                date = "${d}/${m + 1}/$y"
+                date = "%02d/%02d/%d".format(d, m + 1, y)
                 showDatePicker = false
             },
             calendar.get(Calendar.YEAR),
@@ -79,11 +89,13 @@ fun TransactionScreen(
         if (type == "Sale") {
             if (item == null || item.quantity < 1) {
                 errorMessage = "Cannot sell: item not in inventory or out of stock."
+                showSuccess = false
                 return
             }
         } else if (type == "Purchase") {
             if (item != null) {
                 errorMessage = "Cannot purchase: item with this serial already exists."
+                showSuccess = false
                 return
             }
         }
@@ -98,102 +110,198 @@ fun TransactionScreen(
         )
         inventoryRepo.addTransaction(tx)
         errorMessage = null
-        // Optionally: navigate back or clear fields
+        showSuccess = true
+        // Optionally clear fields
     }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Type:")
-            Spacer(Modifier.width(8.dp))
-            DropdownMenuBox(
-                items = listOf("Purchase", "Sale"),
-                selected = type,
-                onSelectedChange = { type = it }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFFB3CFF2), Color(0xFFFDEB71))
+                )
             )
-        }
-        Spacer(Modifier.height(8.dp))
-        Row {
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 32.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                .padding(24.dp)
+                .align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Modern heading
+            Text(
+                if (type == "Purchase") "New Purchase" else "New Sale",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            // Type Toggle
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                SegmentedButton(
+                    options = listOf("Purchase", "Sale"),
+                    selected = type,
+                    onSelected = { type = it }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Serial and barcode
             OutlinedTextField(
                 value = serial,
                 onValueChange = { serial = it },
                 label = { Text("Serial Number") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan Barcode")
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp)
             )
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = { navController.navigate("barcode_scanner") }) {
-                Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan Barcode")
+
+            Spacer(Modifier.height(12.dp))
+
+            // Model
+            OutlinedTextField(
+                value = model,
+                onValueChange = { model = it },
+                label = { Text("Model") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = type == "Purchase",
+                shape = RoundedCornerShape(16.dp)
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Amount
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = { Text("Amount") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Description
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                shape = RoundedCornerShape(16.dp),
+                maxLines = 3
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Date
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Filled.CalendarToday, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (date.isBlank()) "Pick Date" else date)
             }
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = model,
-            onValueChange = { model = it },
-            label = { Text("Model") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = type == "Purchase"
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = amount,
-            onValueChange = { amount = it },
-            label = { Text("Amount") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { showDatePicker = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (date.isBlank()) "Pick Date" else date)
-        }
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { validateAndSubmit() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Submit Transaction")
-        }
-        errorMessage?.let {
-            Text(it, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+
+            Spacer(Modifier.height(18.dp))
+
+            // Submit button
+            Button(
+                onClick = { validateAndSubmit() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Submit Transaction", style = MaterialTheme.typography.titleMedium)
+            }
+
+            AnimatedVisibility(
+                visible = errorMessage != null,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                errorMessage?.let {
+                    Text(
+                        it,
+                        color = Color.Red,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showSuccess,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                Text(
+                    "Transaction successful!",
+                    color = Color(0xFF388E3C),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun DropdownMenuBox(
-    items: List<String>,
+fun SegmentedButton(
+    options: List<String>,
     selected: String,
-    onSelectedChange: (String) -> Unit
+    onSelected: (String) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true }
-        ) {
-            Text(selected)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            items.forEach {
-                DropdownMenuItem(
-                    text = { Text(it) },
-                    onClick = {
-                        onSelectedChange(it)
-                        expanded = false
-                    }
-                )
+    Row(
+        Modifier
+            .background(
+                color = Color(0xFFF0F0F0),
+                shape = CircleShape
+            )
+            .padding(6.dp)
+    ) {
+        options.forEach { option ->
+            val isSelected = option == selected
+            val bgColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+            val textColor = if (isSelected) Color.White else MaterialTheme.colorScheme.primary
+            TextButton(
+                onClick = { onSelected(option) },
+                shape = CircleShape,
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = bgColor,
+                    contentColor = textColor
+                ),
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+            ) {
+                Text(option)
             }
         }
     }

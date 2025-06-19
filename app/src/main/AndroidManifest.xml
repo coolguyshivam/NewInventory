@@ -1,6 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.inventoryapp">
-
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
@@ -8,8 +6,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.InventoryApp">
-        
-        <!-- FileProvider for camera images -->
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -20,15 +17,6 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- ZXing Barcode Scanner Integration (optional) -->
-        <!--
-        <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/zxing_CaptureTheme"/>
-        -->
-
-        <!-- Your launcher activity here -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -39,7 +27,6 @@
         </activity>
     </application>
 
-    <!-- Camera and storage permissions -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
