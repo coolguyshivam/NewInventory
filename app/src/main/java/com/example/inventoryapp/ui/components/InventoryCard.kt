@@ -30,8 +30,9 @@ fun InventoryCard(
                 Text(item.description, style = MaterialTheme.typography.bodyMedium)
             }
             // Optionally, show model, serial, etc. if you want:
-            // Text("Model: ${item.model}")
-            // Text("Serial: ${item.serial}")
+            Text(text = item.name)
+			Text(text = item.model)
+			Text(text = "Qty: ${item.quantity}")
         }
     }
 }
