@@ -1,7 +1,11 @@
 package com.example.inventoryapp.ui.screens
 
 import android.app.DatePickerDialog
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,14 +21,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionScreen(
     navController: NavController,
@@ -75,43 +82,46 @@ fun TransactionScreen(
     // Auto-fill model for Sale
     LaunchedEffect(serial, type) {
         if (type == "Sale" && serial.isNotBlank()) {
-            val item = inventoryRepo.getItemBySerial(serial)
-            if (item != null && item.quantity > 0) {
-                model = item.model
-            } else {
-                model = ""
+            CoroutineScope(Dispatchers.IO).launch {
+                val item = inventoryRepo.getItemBySerial(serial)
+                if (item != null && item.quantity > 0) {
+                    model = item.model
+                } else {
+                    model = ""
+                }
             }
         }
     }
 
     fun validateAndSubmit() {
-        val item = inventoryRepo.getItemBySerial(serial)
-        if (type == "Sale") {
-            if (item == null || item.quantity < 1) {
-                errorMessage = "Cannot sell: item not in inventory or out of stock."
-                showSuccess = false
-                return
+        CoroutineScope(Dispatchers.IO).launch {
+            val item = inventoryRepo.getItemBySerial(serial)
+            if (type == "Sale") {
+                if (item == null || item.quantity < 1) {
+                    errorMessage = "Cannot sell: item not in inventory or out of stock."
+                    showSuccess = false
+                    return@launch
+                }
+            } else if (type == "Purchase") {
+                if (item != null) {
+                    errorMessage = "Cannot purchase: item with this serial already exists."
+                    showSuccess = false
+                    return@launch
+                }
             }
-        } else if (type == "Purchase") {
-            if (item != null) {
-                errorMessage = "Cannot purchase: item with this serial already exists."
-                showSuccess = false
-                return
-            }
+            val tx = Transaction(
+                serial = serial,
+                model = model,
+                amount = amount.toDoubleOrNull() ?: 0.0,
+                description = description,
+                date = date,
+                type = type,
+                quantity = 1
+            )
+            inventoryRepo.addTransaction(tx)
+            errorMessage = null
+            showSuccess = true
         }
-        val tx = Transaction(
-            serial = serial,
-            model = model,
-            amount = amount.toDoubleOrNull() ?: 0.0,
-            description = description,
-            date = date,
-            type = type,
-            quantity = 1
-        )
-        inventoryRepo.addTransaction(tx)
-        errorMessage = null
-        showSuccess = true
-        // Optionally clear fields
     }
 
     Box(
@@ -193,8 +203,8 @@ fun TransactionScreen(
                 label = { Text("Amount") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default.copy(
-                    keyboardType = KeyboardType.Number
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                 ),
                 shape = RoundedCornerShape(16.dp)
             )

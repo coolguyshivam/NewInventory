@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
+import kotlinx.coroutines.flow.collectAsState
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -31,7 +32,6 @@ fun ReportsScreen(
     var filterType by remember { mutableStateOf("All") }
     val transactionList by inventoryRepo.getAllTransactionsFlow().collectAsState(initial = emptyList())
 
-    // State to track which transaction is expanded (by serial or unique id)
     var expandedSerial by remember { mutableStateOf<String?>(null) }
 
     // Barcode scan integration for search
@@ -45,7 +45,6 @@ fun ReportsScreen(
         }
     }
 
-    // Filtering logic
     val filteredTransactions = remember(transactionList, searchText, filterType) {
         transactionList
             .filter {
@@ -123,7 +122,6 @@ fun ReportsScreen(
                 )
             }
 
-            // Transactions list
             if (filteredTransactions.isEmpty()) {
                 Box(
                     Modifier.fillMaxSize(),
@@ -137,8 +135,7 @@ fun ReportsScreen(
                         .fillMaxSize()
                         .padding(bottom = 16.dp)
                 ) {
-                    items(filteredTransactions, key = { it.serial + it.type }) { tx ->
-                        // Only expand by serial (so clicking any purchase or sale of that serial expands both cards)
+                    items(filteredTransactions, key = { it.serial + it.type + it.date }) { tx ->
                         val isExpanded = expandedSerial == tx.serial
                         TransactionReportCard(
                             transaction = tx,
@@ -241,7 +238,6 @@ fun findTransactionByType(
     serial: String,
     type: String
 ): Transaction? {
-    // Find the first transaction with matching serial and type, latest by date
     return allTransactions
         .filter { it.serial == serial && it.type.equals(type, ignoreCase = true) }
         .maxByOrNull { parseDate(it.date) }
