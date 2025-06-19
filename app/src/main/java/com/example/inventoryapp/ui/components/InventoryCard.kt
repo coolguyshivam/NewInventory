@@ -1,38 +1,39 @@
 package com.example.inventoryapp.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import com.example.inventoryapp.model.InventoryItem
 
 @Composable
 fun InventoryCard(
     item: InventoryItem,
-    onClick: (() -> Unit)? = null
+    modifier: Modifier = Modifier,
+    onSell: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .then(
-                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
-            )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleLarge)
-			Text("Name: ${item.name}")
-            Text("Model: ${item.model}")
-            Text("Serial: ${item.serial}")
-            Text("Quantity: ${item.quantity}")			
+            Spacer(Modifier.height(4.dp))
+            Text("Model: ${item.model}", style = MaterialTheme.typography.bodyMedium)
+            Text("Serial: ${item.serial}", style = MaterialTheme.typography.bodyMedium)
+            Text("Quantity: ${item.quantity}", style = MaterialTheme.typography.bodyMedium)
             if (item.description.isNotBlank()) {
-                Text(item.description, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(item.description, style = MaterialTheme.typography.bodySmall)
             }
-            // Optionally, show model, serial, etc. if you want:
+            Spacer(Modifier.height(8.dp))
+            if (onSell != null) {
+                Button(onClick = onSell) {
+                    Text("Sell")
+                }
+            }
         }
     }
 }
