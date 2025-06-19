@@ -15,7 +15,6 @@ import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.ui.components.InventoryCard
-import com.example.inventoryapp.data.Result
 
 @Composable
 fun InventoryScreen(
@@ -23,28 +22,12 @@ fun InventoryScreen(
     inventoryRepo: InventoryRepository,
     authRepo: AuthRepository
 ) {
-    var inventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        loading = true
-        when (val result = inventoryRepo.getInventory()) {
-            is Result.Success -> {
-                inventory = result.data
-                error = null
-            }
-            is Result.Error -> {
-                error = result.exception.message
-            }
-        }
-        loading = false
-    }
+    val inventory by inventoryRepo.getInventoryFlow().collectAsState(initial = emptyList()) // Use Flow from repo!
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        if (loading) {
+        if (inventory.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -52,9 +35,6 @@ fun InventoryScreen(
                 CircularProgressIndicator()
             }
         } else {
-            error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-            }
             LazyColumn {
                 items(inventory) { item ->
                     InventoryCard(item = item)

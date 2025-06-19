@@ -1,6 +1,7 @@
 package com.example.inventoryapp.ui.screens
 
 import android.app.DatePickerDialog
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +30,7 @@ import com.example.inventoryapp.model.Transaction
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,6 +46,9 @@ fun TransactionScreen(
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     val savedState = navController.currentBackStackEntry?.savedStateHandle
+
+    // Transaction type toggle
+    var transactionType by remember { mutableStateOf("Purchase") }
 
     var serialState by remember { mutableStateOf(serial) }
     var model by remember { mutableStateOf("") }
@@ -72,13 +77,7 @@ fun TransactionScreen(
     val descriptionFocus = remember { FocusRequester() }
     val quantityFocus = remember { FocusRequester() }
 
-    // For date picker validation (no future dates)
-    fun isDateValid(selected: Calendar): Boolean {
-        val now = Calendar.getInstance()
-        return !selected.after(now)
-    }
-
-    // Handle scanned serial from BarcodeScanner
+    // Barcode scan result handler
     LaunchedEffect(savedState?.get<String>("scannedSerial")) {
         savedState?.get<String>("scannedSerial")?.let { code ->
             serialState = code
@@ -103,14 +102,32 @@ fun TransactionScreen(
         }
     }
 
-    // Phone number formatting: allow only digits and max 10 chars
-    fun formatPhone(input: String): String = input.filter { it.isDigit() }.take(10)
-
-    // Aadhaar formatting: allow only digits and max 12 chars
-    fun formatAadhaar(input: String): String = input.filter { it.isDigit() }.take(12)
-
+    // Pick images from gallery
     val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         images = uris?.take(5) ?: emptyList()
+    }
+    // Camera integration
+    val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraImageUri.value != null) {
+            images = (images + cameraImageUri.value!!).take(5)
+        }
+    }
+
+    // Date picker dialog
+    fun showDatePicker() {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val picked = Calendar.getInstance()
+                picked.set(year, month, dayOfMonth)
+                date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(picked.time)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
     }
 
     Scaffold(
@@ -123,13 +140,22 @@ fun TransactionScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // Purchase/Sale toggle
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Button(
+                    onClick = { transactionType = "Purchase" },
+                    colors = if (transactionType == "Purchase") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary) else ButtonDefaults.buttonColors(MaterialTheme.colorScheme.surface)
+                ) { Text("Purchase") }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { transactionType = "Sale" },
+                    colors = if (transactionType == "Sale") ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary) else ButtonDefaults.buttonColors(MaterialTheme.colorScheme.surface)
+                ) { Text("Sale") }
+            }
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = serialState,
-                onValueChange = {
-                    serialState = it
-                    isModelAuto = false
-                    serialError = null
-                },
+                onValueChange = { serialState = it; isModelAuto = false; serialError = null },
                 label = { Text("Serial") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,31 +163,22 @@ fun TransactionScreen(
                 singleLine = true,
                 isError = serialError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { modelFocus.requestFocus() }
-                ),
+                keyboardActions = KeyboardActions(onNext = { modelFocus.requestFocus() }),
                 enabled = !loading
             )
             if (serialError != null) {
                 Text(serialError!!, color = MaterialTheme.colorScheme.error)
             }
-
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = { navController.navigate("barcode_scanner") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !loading
-            ) {
-                Text("Scan Barcode")
-            }
-
+            ) { Text("Scan Barcode") }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = model,
-                onValueChange = {
-                    if (!isModelAuto) model = it
-                    modelError = null
-                },
+                onValueChange = { if (!isModelAuto) model = it; modelError = null },
                 label = { Text("Model") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,57 +187,41 @@ fun TransactionScreen(
                 enabled = !isModelAuto && !loading,
                 isError = modelError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { phoneFocus.requestFocus() }
-                )
+                keyboardActions = KeyboardActions(onNext = { phoneFocus.requestFocus() })
             )
             if (modelError != null) {
                 Text(modelError!!, color = MaterialTheme.colorScheme.error)
             }
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = formatPhone(it) },
+                onValueChange = { phone = it.filter { c -> c.isDigit() }.take(10) },
                 label = { Text("Phone") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(phoneFocus),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { aadhaarFocus.requestFocus() }
-                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { aadhaarFocus.requestFocus() }),
                 enabled = !loading
             )
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = aadhaar,
-                onValueChange = { aadhaar = formatAadhaar(it) },
+                onValueChange = { aadhaar = it.filter { c -> c.isDigit() }.take(12) },
                 label = { Text("Aadhaar") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(aadhaarFocus),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { amountFocus.requestFocus() }
-                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { amountFocus.requestFocus() }),
                 enabled = !loading
             )
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = amount,
                 onValueChange = {
-                    // allow only digits and a single decimal point
                     val filtered = it.filterIndexed { idx, ch -> ch.isDigit() || (ch == '.' && !it.take(idx).contains('.')) }
                     amount = filtered
                     amountError = null
@@ -231,19 +232,13 @@ fun TransactionScreen(
                     .focusRequester(amountFocus),
                 singleLine = true,
                 isError = amountError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { descriptionFocus.requestFocus() }
-                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { descriptionFocus.requestFocus() }),
                 enabled = !loading
             )
             if (amountError != null) {
                 Text(amountError!!, color = MaterialTheme.colorScheme.error)
             }
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = description,
@@ -253,45 +248,20 @@ fun TransactionScreen(
                     .fillMaxWidth()
                     .focusRequester(descriptionFocus),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { quantityFocus.requestFocus() }
-                ),
+                keyboardActions = KeyboardActions(onNext = { quantityFocus.requestFocus() }),
                 enabled = !loading
             )
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = date,
-                onValueChange = { /* Date picker only */ },
+                onValueChange = {},
                 label = { Text("Date") },
+                readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !loading) {
-                        val calendar = Calendar.getInstance()
-                        val datePicker = DatePickerDialog(
-                            context,
-                            { _, year, month, dayOfMonth ->
-                                val picked = Calendar.getInstance()
-                                picked.set(year, month, dayOfMonth)
-                                if (isDateValid(picked)) {
-                                    date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(picked.time)
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Future dates are not allowed.")
-                                    }
-                                }
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        )
-                        datePicker.datePicker.maxDate = System.currentTimeMillis()
-                        datePicker.show()
-                    },
-                readOnly = true,
+                    .clickable(enabled = !loading) { showDatePicker() },
                 enabled = !loading
             )
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = quantity,
@@ -305,28 +275,33 @@ fun TransactionScreen(
                     .focusRequester(quantityFocus),
                 singleLine = true,
                 isError = quantityError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 enabled = !loading
             )
             if (quantityError != null) {
                 Text(quantityError!!, color = MaterialTheme.colorScheme.error)
             }
-
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { imgPicker.launch(null) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !loading
-            ) {
-                Text("Pick Images (max 5)")
-            }
 
+            // Image buttons
+            Row {
+                Button(
+                    onClick = { imgPicker.launch(null) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !loading
+                ) { Text("Pick Images") }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val file = File.createTempFile("IMG_", ".jpg", context.cacheDir)
+                        cameraImageUri.value = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                        cameraLauncher.launch(cameraImageUri.value)
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !loading
+                ) { Text("Take Photo") }
+            }
             if (images.isNotEmpty()) {
                 Column {
                     Text("Tap an image to remove")
@@ -337,9 +312,7 @@ fun TransactionScreen(
                                 contentDescription = "Selected image",
                                 modifier = Modifier
                                     .size(64.dp)
-                                    .clickable(enabled = !loading) {
-                                        images = images - uri
-                                    }
+                                    .clickable(enabled = !loading) { images = images - uri }
                             )
                         }
                     }
@@ -387,6 +360,9 @@ fun TransactionScreen(
 
                     scope.launch {
                         try {
+                            // TODO: Image cropping/compression hooks go here
+                            // TODO: Upload progress and error retry logic goes here
+
                             // --- Image upload ---
                             val imageUrls = mutableListOf<String>()
                             if (images.isNotEmpty()) {
@@ -407,7 +383,8 @@ fun TransactionScreen(
                                 description = description,
                                 date = date,
                                 quantity = quantityInt ?: 1,
-                                imageUrls = imageUrls // Will be empty if no images
+                                imageUrls = imageUrls,
+                                type = transactionType // <-- Add this field to your Transaction model!
                             )
                             val result = inventoryRepo.addTransaction(transaction)
                             loading = false
@@ -423,8 +400,6 @@ fun TransactionScreen(
                                 description = ""
                                 quantity = "1"
                                 images = emptyList()
-                                // Or navigate back:
-                                // navController.popBackStack()
                             } else if (result is Result.Error) {
                                 snackbarHostState.showSnackbar(result.exception?.message ?: "Error saving transaction.")
                             }

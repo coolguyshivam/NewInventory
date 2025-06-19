@@ -101,6 +101,16 @@ dependencies {
     // Accompanist Permissions
     implementation "com.google.accompanist:accompanist-permissions:0.28.0"
 
+	// Room (for offline queue)
+	implementation "androidx.room:room-runtime:2.5.2"
+	kapt "androidx.room:room-compiler:2.5.2"
+	
+	// WorkManager
+	implementation "androidx.work:work-runtime-ktx:2.8.1"
+	
+	// CanHub Android-Image-Cropper
+	implementation "com.github.CanHub:Android-Image-Cropper:4.3.2"
+
 }
 
 

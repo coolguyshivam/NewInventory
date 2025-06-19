@@ -34,5 +34,8 @@ fun AppNavHost(
         composable("transaction") {
             TransactionScreen(navController, inventoryRepo)
         }
+		composable("barcode_scanner") {
+			BarcodeScannerScreen(navController)
+		}
     }
 }
