@@ -4,7 +4,7 @@ data class InventoryItem(
     val serial: String = "",
     val name: String = "",         // Human-readable name
 	val model: String = "",
-    val quantity: Int = 0,         // Inventory stock count
+    var quantity: Int = 0,         // Inventory stock count
     val phone: String = "",
     val aadhaar: String = "",
     val description: String = "",
