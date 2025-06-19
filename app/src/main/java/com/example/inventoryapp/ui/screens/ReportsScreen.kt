@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
 import kotlinx.coroutines.flow.collectAsState
+import androidx.compose.foundation.layout.padding
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -30,7 +31,9 @@ fun ReportsScreen(
 ) {
     var searchText by remember { mutableStateOf("") }
     var filterType by remember { mutableStateOf("All") }
-    val transactionList by inventoryRepo.getAllTransactionsFlow().collectAsState(initial = emptyList())
+    // Ensure getAllTransactionsFlow returns Flow<List<Transaction>>
+    val transactionListState = inventoryRepo.getAllTransactionsFlow().collectAsState(initial = emptyList())
+    val transactionList = transactionListState.value
 
     var expandedSerial by remember { mutableStateOf<String?>(null) }
 
@@ -168,8 +171,8 @@ fun TransactionReportCard(
     onClick: (() -> Unit)? = null
 ) {
     val cardColor = when (transaction.type.lowercase()) {
-        "purchase" -> Color(0xFFB9F6CA) // Green
-        "sale" -> Color(0xFFB3E5FC)     // Blue
+        "purchase" -> Color(0xFFB9F6CA)
+        "sale" -> Color(0xFFB3E5FC)
         else -> MaterialTheme.colorScheme.surface
     }
     Card(
@@ -207,7 +210,7 @@ fun RedTransactionDetailCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2)) // Light red
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(

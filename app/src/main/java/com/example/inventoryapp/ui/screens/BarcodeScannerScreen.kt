@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -48,8 +49,8 @@ fun BarcodeScannerScreen(
         }
     }
 
-    Scaffold { padding ->
-        Surface(modifier = Modifier.padding(padding)) {
+    Scaffold { paddingValues ->
+        Surface(modifier = Modifier.padding(paddingValues)) {
             Text("Launching barcode scanner...", style = MaterialTheme.typography.bodyLarge)
         }
     }

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
@@ -204,7 +205,7 @@ fun TransactionScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions.Default.copy(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    keyboardType = KeyboardType.Number
                 ),
                 shape = RoundedCornerShape(16.dp)
             )

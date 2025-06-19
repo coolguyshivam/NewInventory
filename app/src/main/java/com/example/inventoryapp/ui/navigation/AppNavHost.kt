@@ -25,7 +25,7 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable("inventory") {
-            InventoryScreen(navController, inventoryRepo, authRepo)
+            InventoryScreen(navController, inventoryRepo)
         }
         composable("reports") {
             ReportsScreen(navController, inventoryRepo)
