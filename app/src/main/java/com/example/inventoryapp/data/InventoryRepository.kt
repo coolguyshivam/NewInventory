@@ -6,9 +6,9 @@ import com.example.inventoryapp.model.Transaction
 class InventoryRepository {
 
     private val inventory = mutableListOf(
-        InventoryItem(serial = "123ABC", name = "Redmi Note 10"),
-        InventoryItem(serial = "456DEF", name = "Samsung A51"),
-        InventoryItem(serial = "789GHI", name = "Vivo Y20")
+        InventoryItem(serial = "123ABC", name = "Redmi Note 10", quantity = 10),
+        InventoryItem(serial = "456DEF", name = "Samsung A51", quantity = 8),
+        InventoryItem(serial = "789GHI", name = "Vivo Y20", quantity = 5)
     )
 
     private val transactions = mutableListOf<Transaction>()
@@ -32,6 +32,22 @@ class InventoryRepository {
     fun addTransaction(transaction: Transaction): Result<Unit> {
         return try {
             transactions.add(transaction)
+            val item = inventory.find { it.serial == transaction.serial }
+            if (item != null) {
+                when (transaction.type) {
+                    "Purchase" -> item.quantity += transaction.quantity
+                    "Sale" -> item.quantity -= transaction.quantity
+                }
+            } else if (transaction.type == "Purchase") {
+                // If not present and Purchase, add new inventory item
+                inventory.add(
+                    InventoryItem(
+                        serial = transaction.serial,
+                        name = transaction.model,
+                        quantity = transaction.quantity
+                    )
+                )
+            }
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
