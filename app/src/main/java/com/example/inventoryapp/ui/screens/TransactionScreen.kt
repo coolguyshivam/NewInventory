@@ -80,10 +80,12 @@ fun TransactionScreen(
         ).show()
     }
 
-    // Auto-fill model for Sale
+    // Auto-fill model for Sale (fixed coroutine scope)
     LaunchedEffect(serial, type) {
         if (type == "Sale" && serial.isNotBlank()) {
-            CoroutineScope(Dispatchers.IO).launch {
+            // Use rememberCoroutineScope for Compose-safe launching
+            val scope = rememberCoroutineScope()
+            scope.launch(Dispatchers.IO) {
                 val item = inventoryRepo.getItemBySerial(serial)
                 if (item != null && item.quantity > 0) {
                     model = item.model
@@ -94,8 +96,10 @@ fun TransactionScreen(
         }
     }
 
+    // Fix: use rememberCoroutineScope for submit as well to avoid leaking Compose context
+    val submitScope = rememberCoroutineScope()
     fun validateAndSubmit() {
-        CoroutineScope(Dispatchers.IO).launch {
+        submitScope.launch(Dispatchers.IO) {
             val item = inventoryRepo.getItemBySerial(serial)
             if (type == "Sale") {
                 if (item == null || item.quantity < 1) {
@@ -110,10 +114,22 @@ fun TransactionScreen(
                     return@launch
                 }
             }
+            // Validation for inputs
+            if (serial.isBlank() || model.isBlank() || amount.isBlank() || date.isBlank()) {
+                errorMessage = "Please fill all fields."
+                showSuccess = false
+                return@launch
+            }
+            val parsedAmount = amount.toDoubleOrNull()
+            if (parsedAmount == null) {
+                errorMessage = "Amount must be a valid number."
+                showSuccess = false
+                return@launch
+            }
             val tx = Transaction(
                 serial = serial,
                 model = model,
-                amount = amount.toDoubleOrNull() ?: 0.0,
+                amount = parsedAmount,
                 description = description,
                 date = date,
                 type = type,
@@ -200,7 +216,7 @@ fun TransactionScreen(
             // Amount
             OutlinedTextField(
                 value = amount,
-                onValueChange = { amount = it },
+                onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
                 label = { Text("Amount") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,

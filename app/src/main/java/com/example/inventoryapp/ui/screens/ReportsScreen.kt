@@ -12,14 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
-import kotlinx.coroutines.flow.collectAsState
-import androidx.compose.foundation.layout.padding
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -31,11 +29,10 @@ fun ReportsScreen(
 ) {
     var searchText by remember { mutableStateOf("") }
     var filterType by remember { mutableStateOf("All") }
-    // Ensure getAllTransactionsFlow returns Flow<List<Transaction>>
-    val transactionListState = inventoryRepo.getAllTransactionsFlow().collectAsState(initial = emptyList())
-    val transactionList = transactionListState.value
-
     var expandedSerial by remember { mutableStateOf<String?>(null) }
+
+    // Collect transactions using collectAsStateWithLifecycle
+    val transactions by inventoryRepo.getAllTransactionsFlow().collectAsStateWithLifecycle(initialValue = emptyList())
 
     // Barcode scan integration for search
     val scannedSerial = navController.currentBackStackEntry
@@ -48,17 +45,18 @@ fun ReportsScreen(
         }
     }
 
-    val filteredTransactions = remember(transactionList, searchText, filterType) {
-        transactionList
+    // Filter and sort transactions
+    val filteredTransactions = remember(transactions, searchText, filterType) {
+        transactions
             .filter {
                 (filterType == "All" || it.type.equals(filterType, ignoreCase = true)) &&
                 (searchText.isBlank() ||
-                        it.serial.contains(searchText, true) ||
-                        it.model.contains(searchText, true) ||
-                        it.type.contains(searchText, true) ||
-                        it.description.contains(searchText, true) ||
-                        it.date.contains(searchText, true) ||
-                        it.amount.toString().contains(searchText, true)
+                    it.serial.contains(searchText, true) ||
+                    it.model.contains(searchText, true) ||
+                    it.type.contains(searchText, true) ||
+                    it.description.contains(searchText, true) ||
+                    it.date.contains(searchText, true) ||
+                    it.amount.toString().contains(searchText, true)
                 )
             }
             .sortedByDescending { parseDate(it.date) }
@@ -70,7 +68,9 @@ fun ReportsScreen(
                 onClick = { navController.navigate("barcode_scanner") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
-                modifier = Modifier.shadow(8.dp)
+                modifier = Modifier
+                    .padding(16.dp)
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             ) {
                 Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan Barcode")
             }
@@ -139,15 +139,15 @@ fun ReportsScreen(
                         .padding(bottom = 16.dp)
                 ) {
                     items(filteredTransactions, key = { it.serial + it.type + it.date }) { tx ->
-                        val isExpanded = expandedSerial == tx.serial
+                        val isExpanded = expandedSerial == tx.serial + tx.type + tx.date
                         TransactionReportCard(
                             transaction = tx,
-                            onClick = { expandedSerial = if (isExpanded) null else tx.serial }
+                            onClick = { expandedSerial = if (isExpanded) null else tx.serial + tx.type + tx.date }
                         )
                         if (isExpanded) {
                             // Show the two red cards: one for purchase, one for sale
-                            val purchase = findTransactionByType(transactionList, tx.serial, "Purchase")
-                            val sale = findTransactionByType(transactionList, tx.serial, "Sale")
+                            val purchase = findTransactionByType(transactions, tx.serial, "Purchase")
+                            val sale = findTransactionByType(transactions, tx.serial, "Sale")
 
                             RedTransactionDetailCard(
                                 transaction = purchase,

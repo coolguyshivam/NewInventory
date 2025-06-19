@@ -7,16 +7,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class InventoryRepository {
-    private val inventory = mutableListOf(
-        InventoryItem(serial = "123ABC", name = "Redmi Note 10", quantity = 10),
-        InventoryItem(serial = "456DEF", name = "Samsung A51", quantity = 8),
-        InventoryItem(serial = "789GHI", name = "Vivo Y20", quantity = 5)
-    )
+    private val inventory = mutableListOf<InventoryItem>()
     private val transactions = mutableListOf<Transaction>()
 
     // Flow for inventory
     private val inventoryFlow = MutableStateFlow(inventory.toList())
     fun getInventoryFlow(): Flow<List<InventoryItem>> = inventoryFlow.asStateFlow()
+
+    // Flow for transactions
+    private val transactionsFlow = MutableStateFlow(transactions.toList())
+    fun getAllTransactionsFlow(): Flow<List<Transaction>> = transactionsFlow.asStateFlow()
 
     fun getInventory(): Result<List<InventoryItem>> {
         return try {
@@ -52,7 +52,9 @@ class InventoryRepository {
                     )
                 )
             }
-            inventoryFlow.value = inventory.toList() // update flow
+            // Update both flows!
+            inventoryFlow.value = inventory.toList()
+            transactionsFlow.value = transactions.toList()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
