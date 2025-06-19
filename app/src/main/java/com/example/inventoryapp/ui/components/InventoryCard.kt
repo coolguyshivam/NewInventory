@@ -25,14 +25,14 @@ fun InventoryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleLarge)
-            Text("Quantity: ${item.quantity}")
+			Text("Name: ${item.name}")
+            Text("Model: ${item.model}")
+            Text("Serial: ${item.serial}")
+            Text("Quantity: ${item.quantity}")			
             if (item.description.isNotBlank()) {
                 Text(item.description, style = MaterialTheme.typography.bodyMedium)
             }
             // Optionally, show model, serial, etc. if you want:
-            Text(text = item.name)
-			Text(text = item.model)
-			Text(text = "Qty: ${item.quantity}")
         }
     }
 }
