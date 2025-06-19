@@ -10,20 +10,20 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.ui.screens.InventoryScreen
 import com.example.inventoryapp.ui.screens.ReportsScreen
 import com.example.inventoryapp.ui.screens.TransactionScreen
+import com.example.inventoryapp.ui.screens.BarcodeScannerScreen
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
 
 @Composable
 fun AppNavHost(
     authRepo: AuthRepository,
     inventoryRepo: InventoryRepository,
     navController: NavHostController = rememberNavController(),
-    modifier: Modifier = Modifier // add this
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
         startDestination = "inventory",
-        modifier = modifier // <-- use modifier here
+        modifier = modifier
     ) {
         composable("inventory") {
             InventoryScreen(navController, inventoryRepo, authRepo)
@@ -34,8 +34,8 @@ fun AppNavHost(
         composable("transaction") {
             TransactionScreen(navController, inventoryRepo)
         }
-		composable("barcode_scanner") {
-			BarcodeScannerScreen(navController)
-		}
+        composable("barcode_scanner") {
+            BarcodeScannerScreen(navController)
+        }
     }
 }

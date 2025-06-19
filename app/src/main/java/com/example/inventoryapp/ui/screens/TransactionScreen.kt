@@ -1,7 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
 import android.app.DatePickerDialog
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,7 +29,8 @@ import com.example.inventoryapp.model.Transaction
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.io.ByteArrayOutputStream
+import java.io.File
+import androidx.core.content.FileProvider
 import java.text.SimpleDateFormat
 import java.util.*
 

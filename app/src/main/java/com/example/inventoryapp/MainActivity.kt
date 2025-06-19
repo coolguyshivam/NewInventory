@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +37,7 @@ class MainActivity : ComponentActivity() {
                         authRepo = AuthRepository(),
                         inventoryRepo = InventoryRepository(),
                         navController = navController,
-                        modifier = Modifier.padding(innerPadding) // <-- Fixes the lint error
+                        modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
@@ -51,7 +50,7 @@ data class BottomNavItem(val route: String, val label: String, val icon: ImageVe
 @Composable
 fun BottomBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List), // <-- Fixes the deprecation warning
+        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List),
         BottomNavItem("transaction", "Transaction", Icons.Filled.SwapHoriz),
         BottomNavItem("reports", "Reports", Icons.Filled.Receipt)
     )

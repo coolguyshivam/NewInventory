@@ -22,7 +22,7 @@ fun InventoryScreen(
     inventoryRepo: InventoryRepository,
     authRepo: AuthRepository
 ) {
-    val inventory by inventoryRepo.getInventoryFlow().collectAsState(initial = emptyList()) // Use Flow from repo!
+    val inventory by inventoryRepo.getInventoryFlow().collectAsState(initial = emptyList())
 
     Column(
         modifier = Modifier.fillMaxSize()

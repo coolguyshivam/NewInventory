@@ -2,16 +2,21 @@ package com.example.inventoryapp.data
 
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class InventoryRepository {
-
     private val inventory = mutableListOf(
         InventoryItem(serial = "123ABC", name = "Redmi Note 10", quantity = 10),
         InventoryItem(serial = "456DEF", name = "Samsung A51", quantity = 8),
         InventoryItem(serial = "789GHI", name = "Vivo Y20", quantity = 5)
     )
-
     private val transactions = mutableListOf<Transaction>()
+
+    // Flow for inventory
+    private val inventoryFlow = MutableStateFlow(inventory.toList())
+    fun getInventoryFlow(): Flow<List<InventoryItem>> = inventoryFlow.asStateFlow()
 
     fun getInventory(): Result<List<InventoryItem>> {
         return try {
@@ -39,7 +44,6 @@ class InventoryRepository {
                     "Sale" -> item.quantity -= transaction.quantity
                 }
             } else if (transaction.type == "Purchase") {
-                // If not present and Purchase, add new inventory item
                 inventory.add(
                     InventoryItem(
                         serial = transaction.serial,
@@ -48,6 +52,7 @@ class InventoryRepository {
                     )
                 )
             }
+            inventoryFlow.value = inventory.toList() // update flow
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)

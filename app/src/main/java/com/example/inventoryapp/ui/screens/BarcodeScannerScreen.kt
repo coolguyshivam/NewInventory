@@ -24,6 +24,8 @@ import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 
 @Composable
 fun BarcodeScannerScreen(
