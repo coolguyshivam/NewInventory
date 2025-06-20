@@ -30,7 +30,7 @@ jobs:
 #      run:  ./gradlew clean build
 
     - name: Clean APK
-      run:  ./gradlew clean build --refresh-dependencies
+      run:  ./gradlew clean build --refresh-dependencies --stacktrace
 
     - name: Build APK
       run: ./gradlew assembleDebug
