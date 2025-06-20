@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,10 +34,9 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val authRepo = AuthRepository()
                 val inventoryRepo = InventoryRepository()
-                // Always login as admin for now
                 val userRole: UserRole = authRepo.getCurrentUserRole()
                 Scaffold(
-                    bottomBar = { BottomBar(navController) }
+                    bottomBar = { BottomBar(navController, userRole) }
                 ) { innerPadding ->
                     AppNavHost(
                         authRepo = authRepo,
@@ -54,12 +54,15 @@ class MainActivity : ComponentActivity() {
 data class BottomNavItem(val route: String, val label: String, val icon: ImageVector)
 
 @Composable
-fun BottomBar(navController: NavController) {
-    val items = listOf(
-        BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List),
-        BottomNavItem("transaction", "Transaction", Icons.Filled.SwapHoriz),
-        BottomNavItem("reports", "Reports", Icons.Filled.Receipt)
-    )
+fun BottomBar(navController: NavController, userRole: UserRole) {
+    val items = buildList {
+        add(BottomNavItem("inventory", "Inventory", Icons.AutoMirrored.Filled.List))
+        add(BottomNavItem("transaction", "Transaction", Icons.Filled.SwapHoriz))
+        add(BottomNavItem("transaction_history", "Transaction History", Icons.Filled.Receipt))
+        if (userRole == UserRole.ADMIN) {
+            add(BottomNavItem("analytics", "Analytics", Icons.Filled.ShowChart))
+        }
+    }
     NavigationBar {
         val navBackStackEntry = navController.currentBackStackEntryAsState().value
         val currentRoute = navBackStackEntry?.destination?.route
