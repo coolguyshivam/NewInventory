@@ -60,7 +60,7 @@ fun TransactionForm(
     val scrollState = rememberScrollState()
     val savedState = navController.currentBackStackEntry?.savedStateHandle
 
-    val transactionTypes = listOf("Purchase", "Sale", "Return", "Repair", "Exchange")
+    val transactionTypes = listOf("Purchase", "Sale", "Return", "Repair")
     var type by remember { mutableStateOf(transactionTypes.first()) }
 
     val serialStack = remember { mutableStateListOf<String>() }
@@ -183,7 +183,7 @@ fun TransactionForm(
                 selected = type,
                 onSelected = { type = it }
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
 
             if (bulkScanMode) {
                 Text("Bulk scan mode: Scan items in sequence", color = Color.Blue)

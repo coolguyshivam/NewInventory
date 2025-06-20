@@ -27,8 +27,7 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable("inventory") {
-            // Replace with your actual InventoryScreen if available
-            PlaceholderScreen("Inventory")
+            InventoryScreen(navController, inventoryRepo) 
         }
         composable("transaction") {
             TransactionScreen(
