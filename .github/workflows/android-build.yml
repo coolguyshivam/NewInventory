@@ -33,10 +33,10 @@ jobs:
 #      run:  ./gradlew app:dependencies --configuration implementation
       
     - name: Clean APK
-      run:  ./gradlew clean build --refresh-dependencies --stacktrace
+      run:  ./gradlew clean build --refresh-dependencies
 
     - name: Build APK
-      run: ./gradlew assembleDebug --stacktrace
+      run: ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
