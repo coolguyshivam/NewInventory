@@ -87,4 +87,3 @@ dependencies {
 
 // Google services plugin for Firebase (keep this at the bottom)
 	apply plugin: 'com.google.gms.google-services'
-	apply plugin: 'com.google.devtools.ksp'

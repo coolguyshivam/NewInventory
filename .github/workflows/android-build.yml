@@ -26,8 +26,11 @@ jobs:
 #    - name: clear dependeny APK
 #      run:  ./gradlew app:dependencies
 
+#    - name: Clean APK
+#      run:  ./gradlew clean build
+
     - name: Clean APK
-      run:  ./gradlew clean build
+      run:  ./gradlew clean build --refresh-dependencies
 
     - name: Build APK
       run: ./gradlew assembleDebug
