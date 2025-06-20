@@ -2,21 +2,23 @@ package com.example.inventoryapp.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavHostController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
-import com.example.inventoryapp.ui.screens.InventoryScreen
-import com.example.inventoryapp.ui.screens.ReportsScreen
-import com.example.inventoryapp.ui.screens.TransactionScreen
-import com.example.inventoryapp.ui.screens.BarcodeScannerScreen
+import com.example.inventoryapp.model.UserRole
+import com.example.inventoryapp.ui.screens.*
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun AppNavHost(
     authRepo: AuthRepository,
     inventoryRepo: InventoryRepository,
     navController: NavHostController,
+    userRole: UserRole,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -25,16 +27,40 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable("inventory") {
-            InventoryScreen(navController, inventoryRepo)
-        }
-        composable("reports") {
-            ReportsScreen(navController, inventoryRepo)
+            // Replace with your actual InventoryScreen if available
+            PlaceholderScreen("Inventory")
         }
         composable("transaction") {
-            TransactionScreen(navController, inventoryRepo)
+            TransactionScreen(
+                navController = navController,
+                inventoryRepo = inventoryRepo,
+                userRole = userRole
+            )
         }
         composable("barcode_scanner") {
-            BarcodeScannerScreen(navController)
+            BarcodeScannerScreen(
+                navController = navController
+            )
+        }
+        composable("reports") {
+            AnalyticsScreen(inventoryRepo = inventoryRepo)
+        }
+        composable("transaction_history") {
+            TransactionHistoryScreen(
+                inventoryRepo = inventoryRepo
+            )
+        }
+        composable("analytics") {
+            AnalyticsScreen(inventoryRepo = inventoryRepo)
         }
     }
+}
+
+// Simple placeholder for screens not implemented yet
+@Composable
+fun PlaceholderScreen(name: String) {
+    Text(
+        text = "$name Screen Coming Soon!",
+        modifier = Modifier.padding(32.dp)
+    )
 }

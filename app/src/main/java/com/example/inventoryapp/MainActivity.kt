@@ -4,11 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
+import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.ui.navigation.AppNavHost
 import com.example.inventoryapp.ui.theme.InventoryAppTheme
 import androidx.compose.material3.NavigationBar
@@ -23,7 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,13 +31,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             InventoryAppTheme {
                 val navController = rememberNavController()
+                val authRepo = AuthRepository()
+                val inventoryRepo = InventoryRepository()
+                // Always login as admin for now
+                val userRole: UserRole = authRepo.getCurrentUserRole()
                 Scaffold(
                     bottomBar = { BottomBar(navController) }
                 ) { innerPadding ->
                     AppNavHost(
-                        authRepo = AuthRepository(),
-                        inventoryRepo = InventoryRepository(),
+                        authRepo = authRepo,
+                        inventoryRepo = inventoryRepo,
                         navController = navController,
+                        userRole = userRole,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

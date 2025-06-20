@@ -1,6 +1,8 @@
 package com.example.inventoryapp.data
 
+import com.example.inventoryapp.model.UserRole
+
 class AuthRepository {
-    fun isLoggedIn(): Boolean = true
-    fun getUserEmail(): String = "test@mock.com"
+    // Always return ADMIN for now; replace with real login logic later
+    fun getCurrentUserRole(): UserRole = UserRole.ADMIN
 }
