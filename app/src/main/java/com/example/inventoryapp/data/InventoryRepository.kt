@@ -2,11 +2,7 @@ package com.example.inventoryapp.data
 
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.InventoryItem
-
-sealed class Result<out T> {
-    data class Success<out T>(val data: T): Result<T>()
-    data class Error(val exception: Exception?): Result<Nothing>()
-}
+import com.example.inventoryapp.data.Result
 
 // Local in-memory data stores for now
 private val inventoryItems = mutableListOf(
