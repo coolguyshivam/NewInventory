@@ -58,8 +58,16 @@ fun InventoryScreen(
         }
     }
 
-    // Collect inventory from repo (should be Flow or LiveData in your project)
-    val inventory by inventoryRepo.getInventoryFlow().collectAsState(initial = emptyList())
+    // --- Robust local inventory collection ---
+    // If you do NOT use Flow, just call a suspend function in LaunchedEffect:
+    val inventory = remember { mutableStateListOf<InventoryItem>() }
+
+    // Simulate loading inventory items
+    LaunchedEffect(isRefreshing) {
+        inventory.clear()
+        val list = inventoryRepo.getAllInventoryItems() // <-- Implement this in your InventoryRepository
+        inventory.addAll(list)
+    }
 
     // Barcode scan integration
     val scannedSerial = navController.currentBackStackEntry
@@ -74,20 +82,19 @@ fun InventoryScreen(
 
     // Filter logic
     val filteredInventory = remember(inventory, filterText) {
-        if (filterText.isBlank()) inventory
+        if (filterText.isBlank()) inventory.toList()
         else inventory.filter {
-            it.name.contains(filterText, ignoreCase = true)
-                || it.model.contains(filterText, ignoreCase = true)
-                || it.serial.contains(filterText, ignoreCase = true)
+            (it.name ?: "").contains(filterText, ignoreCase = true)
+                || (it.model ?: "").contains(filterText, ignoreCase = true)
+                || (it.serial ?: "").contains(filterText, ignoreCase = true)
         }
     }
     val groupedInventory = remember(filteredInventory) {
-        filteredInventory.groupBy { it.name }
+        filteredInventory.groupBy { it.name ?: "(No Name)" }
     }
 
     // Image picker and take photo logic
-    val cameraPermission = if (Build.VERSION.SDK_INT >= 33)
-        Manifest.permission.CAMERA else Manifest.permission.CAMERA
+    val cameraPermission = Manifest.permission.CAMERA
     val readImagePermission = if (Build.VERSION.SDK_INT >= 33)
         Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
 
@@ -159,49 +166,51 @@ fun InventoryScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(groupedInventory.entries.toList(), key = { it.key }) { (name, itemsForName) ->
-                            var expanded by remember { mutableStateOf(expandedNames.contains(name)) }
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    .clickable {
-                                        expanded = !expanded
-                                        expandedNames = if (expanded) expandedNames + name else expandedNames - name
-                                    }
-                            ) {
-                                Column {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = name,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            text = "Qty: ${itemsForName.sumOf { it.quantity }}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color.Gray
-                                        )
-                                    }
-                                    if (expanded) {
-                                        Divider()
-                                        itemsForName.forEach { item ->
-                                            InventoryCard(
-                                                item = item,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                                onSell = {
-                                                    navController.navigate(
-                                                        "transaction_screen?type=Sale&serial=${item.serial}&model=${item.model}"
-                                                    )
-                                                }
+                        groupedInventory.forEach { (name, itemsForName) ->
+                            item(key = name) {
+                                var expanded by remember { mutableStateOf(expandedNames.contains(name)) }
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .clickable {
+                                            expanded = !expanded
+                                            expandedNames = if (expanded) expandedNames + name else expandedNames - name
+                                        }
+                                ) {
+                                    Column {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                modifier = Modifier.weight(1f)
                                             )
+                                            Text(
+                                                text = "Qty: ${itemsForName.sumOf { it.quantity }}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        if (expanded) {
+                                            Divider()
+                                            itemsForName.forEach { item ->
+                                                InventoryCard(
+                                                    item = item,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                    onSell = {
+                                                        navController.navigate(
+                                                            "transaction_screen?type=Sale&serial=${item.serial}&model=${item.model}"
+                                                        )
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
