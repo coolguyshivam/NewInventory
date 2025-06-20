@@ -1,14 +1,11 @@
 package com.example.inventoryapp.ui.screens
 
 import android.app.DatePickerDialog
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +18,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +40,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
+import com.example.inventoryapp.model.UserRole
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,13 +48,19 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Assume you have these in your models and repo
+// data class TransactionType(val name: String, val fields: List<String>)
+// enum class UserRole { ADMIN, STAFF }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionScreen(
     navController: NavController,
     inventoryRepo: InventoryRepository,
+    userRole: UserRole,
+    // For custom required fields (can be set by admin in settings)
+    requiredFields: List<String> = listOf("serial", "model", "amount", "date")
 ) {
-    // UI State
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -62,10 +68,17 @@ fun TransactionScreen(
     val scrollState = rememberScrollState()
     val savedState = navController.currentBackStackEntry?.savedStateHandle
 
-    // Form State
-    var type by remember { mutableStateOf(savedState?.get<String>("type") ?: "Purchase") }
-    var serialState by remember { mutableStateOf(savedState?.get<String>("serial") ?: "") }
-    var model by remember { mutableStateOf(savedState?.get<String>("model") ?: "") }
+    // Transaction Types & dynamic fields
+    val transactionTypes = listOf("Purchase", "Sale", "Return", "Repair", "Exchange")
+    var type by remember { mutableStateOf(transactionTypes.first()) }
+
+    // Undo/Redo stacks
+    val serialStack = remember { mutableStateListOf<String>() }
+    val modelStack = remember { mutableStateListOf<String>() }
+
+    // Form state
+    var serial by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
     var isModelAuto by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
     var aadhaar by remember { mutableStateOf("") }
@@ -76,6 +89,18 @@ fun TransactionScreen(
     var images by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var showSuccess by remember { mutableStateOf(false) }
+
+    // Tooltips and help
+    val toolTips = mapOf(
+        "serial" to "Unique code for the item (scan or enter manually)",
+        "model" to "Product model (auto-filled if available)",
+        "phone" to "Customer phone (optional)",
+        "aadhaar" to "Customer Aadhaar (optional)",
+        "amount" to "Transaction value",
+        "description" to "Additional details",
+        "date" to "Date of transaction",
+        "quantity" to "Number of units"
+    )
 
     // Field errors
     var serialError by remember { mutableStateOf<String?>(null) }
@@ -92,12 +117,31 @@ fun TransactionScreen(
     val descriptionFocus = remember { FocusRequester() }
     val quantityFocus = remember { FocusRequester() }
 
-    // Utils
-    fun formatPhone(input: String) = input.filter { it.isDigit() }.take(10)
-    fun formatAadhaar(input: String) = input.filter { it.isDigit() }.take(12)
-    fun isDateValid(selected: Calendar): Boolean = !selected.after(Calendar.getInstance())
+    // Undo/Redo handlers
+    fun pushToStack(stack: MutableList<String>, value: String) {
+        if (stack.isEmpty() || stack.last() != value) stack.add(value)
+    }
+    fun popFromStack(stack: MutableList<String>, current: String): String =
+        if (stack.isNotEmpty()) stack.removeLast().also { if (stack.isEmpty()) stack.add(current) } else current
 
-    // Image Picker
+    // Suggest models
+    var modelSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(model) {
+        if (model.isNotBlank()) {
+            modelSuggestions =
+                inventoryRepo.getAllModels().filter { it.contains(model, ignoreCase = true) }.take(5)
+        } else {
+            modelSuggestions = emptyList()
+        }
+    }
+
+    // Scan History (short-term in-memory)
+    val scanHistory = remember { mutableStateListOf<String>() }
+    // Bulk scan mode
+    var bulkScanMode by remember { mutableStateOf(false) }
+    val scannedSerials = remember { mutableStateListOf<String>() }
+
+    // Image Picker, Camera (stub for camera), Cropping/Compression (to be implemented as needed)
     val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         images = uris?.take(5) ?: emptyList()
     }
@@ -105,16 +149,18 @@ fun TransactionScreen(
     // Handle scanned serial from BarcodeScanner
     LaunchedEffect(savedState?.get<String>("scannedSerial")) {
         savedState?.get<String>("scannedSerial")?.let { code ->
-            serialState = code
+            serial = code
+            scanHistory.add(0, code)
+            if (bulkScanMode) scannedSerials.add(code)
             savedState.remove<String>("scannedSerial")
         }
     }
 
-    // Auto-fetch model when serial or type changes
-    LaunchedEffect(serialState, type) {
-        if (serialState.isNotBlank() && type == "Sale") {
+    // Auto-fetch model on serial change (for Sale/Return/Repair/Exchange)
+    LaunchedEffect(serial, type) {
+        if (serial.isNotBlank() && type != "Purchase") {
             scope.launch(Dispatchers.IO) {
-                val item = inventoryRepo.getItemBySerial(serialState)
+                val item = inventoryRepo.getItemBySerial(serial)
                 if (item != null && item.quantity > 0) {
                     model = item.model
                     isModelAuto = true
@@ -128,10 +174,46 @@ fun TransactionScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    // Date validation
+    fun isDateValid(selected: Calendar): Boolean = !selected.after(Calendar.getInstance())
 
+    // Formatting helpers
+    fun formatPhone(input: String) = input.filter { it.isDigit() }.take(10)
+    fun formatAadhaar(input: String) = input.filter { it.isDigit() }.take(12)
+
+    // Role-based permissions and audit log stub
+    val canEdit = userRole == UserRole.ADMIN || userRole == UserRole.STAFF
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Inventory Transaction") },
+                actions = {
+                    // Transaction history & Analytics
+                    IconButton(onClick = { navController.navigate("transaction_history") }) {
+                        Icon(Icons.Filled.History, contentDescription = "Transaction History")
+                    }
+                    IconButton(onClick = { navController.navigate("analytics") }) {
+                        Icon(Icons.Filled.ShowChart, contentDescription = "Analytics/Stats")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            if (!bulkScanMode) {
+                ExtendedFloatingActionButton(
+                    text = { Text("Bulk Scan") },
+                    onClick = { bulkScanMode = true }
+                )
+            } else {
+                ExtendedFloatingActionButton(
+                    text = { Text("Exit Bulk Scan") },
+                    onClick = { bulkScanMode = false }
+                )
+            }
+        }
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -140,6 +222,7 @@ fun TransactionScreen(
                         colors = listOf(Color(0xFFB3CFF2), Color(0xFFFDEB71))
                     )
                 )
+                .padding(paddingValues)
         ) {
             Column(
                 modifier = Modifier
@@ -152,46 +235,57 @@ fun TransactionScreen(
                     .align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Heading
-                Text(
-                    if (type == "Purchase") "New Purchase" else "New Sale",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                // Top: Transaction Type
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    SegmentedButton(
+                        options = transactionTypes,
+                        selected = type,
+                        onSelected = { type = it }
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
 
-                // Type Toggle
-                SegmentedButton(
-                    options = listOf("Purchase", "Sale"),
-                    selected = type,
-                    onSelected = {
-                        type = it
-                        // Clear model if switching to purchase
-                        if (type == "Purchase") {
-                            model = ""
-                            isModelAuto = false
-                        }
+                // Bulk Scan Info
+                if (bulkScanMode) {
+                    Text("Bulk scan mode: Scan items in sequence", color = Color.Blue)
+                    if (scannedSerials.isNotEmpty()) {
+                        Text("Scanned: ${scannedSerials.joinToString()}")
                     }
-                )
+                }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Serial Number
+                // Undo/Redo example for serial/model
                 OutlinedTextField(
-                    value = serialState,
+                    value = serial,
                     onValueChange = {
-                        serialState = it
+                        pushToStack(serialStack, serial)
+                        serial = it
                         serialError = null
                         isModelAuto = false
+                        // Suggest if in bulk scan mode
                     },
-                    label = { Text("Serial Number") },
+                    label = {
+                        Row {
+                            Text("Serial Number")
+                            TooltipIcon(toolTips["serial"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(serialFocus),
                     singleLine = true,
                     trailingIcon = {
-                        IconButton(onClick = { navController.navigate("barcode_scanner") }) {
-                            Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan Barcode")
+                        Row {
+                            IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                                Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan Barcode")
+                            }
+                            if (serialStack.isNotEmpty()) {
+                                IconButton(onClick = { serial = popFromStack(serialStack, serial) }) {
+                                    Text("Undo")
+                                }
+                            }
                         }
                     },
                     isError = serialError != null,
@@ -199,42 +293,73 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onNext = { modelFocus.requestFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
                 serialError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Model
+                // Model with auto-suggest and undo
                 OutlinedTextField(
                     value = model,
                     onValueChange = {
-                        if (!isModelAuto) model = it
+                        if (!isModelAuto) {
+                            pushToStack(modelStack, model)
+                            model = it
+                        }
                         modelError = null
                     },
-                    label = { Text("Model") },
+                    label = {
+                        Row {
+                            Text("Model")
+                            TooltipIcon(toolTips["model"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(modelFocus),
                     singleLine = true,
-                    enabled = !isModelAuto && type == "Purchase" && !loading,
+                    enabled = !isModelAuto && type == "Purchase" && canEdit && !loading,
                     isError = modelError != null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
                         onNext = { phoneFocus.requestFocus() }
                     ),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    trailingIcon = {
+                        if (modelStack.isNotEmpty()) {
+                            IconButton(onClick = { model = popFromStack(modelStack, model) }) {
+                                Text("Undo")
+                            }
+                        }
+                    }
                 )
                 modelError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-                Spacer(Modifier.height(8.dp))
+                // Model auto-suggest dropdown
+                DropdownMenu(
+                    expanded = modelSuggestions.isNotEmpty(),
+                    onDismissRequest = { modelSuggestions = emptyList() }
+                ) {
+                    modelSuggestions.forEach {
+                        DropdownMenuItem(
+                            text = { Text(it) },
+                            onClick = {
+                                model = it
+                                modelSuggestions = emptyList()
+                            }
+                        )
+                    }
+                }
 
-                // Phone
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = formatPhone(it) },
-                    label = { Text("Phone (optional)") },
+                    label = {
+                        Row {
+                            Text("Phone (optional)")
+                            TooltipIcon(toolTips["phone"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(phoneFocus),
@@ -246,17 +371,19 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onNext = { aadhaarFocus.requestFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
 
-                Spacer(Modifier.height(8.dp))
-
-                // Aadhaar
                 OutlinedTextField(
                     value = aadhaar,
                     onValueChange = { aadhaar = formatAadhaar(it) },
-                    label = { Text("Aadhaar (optional)") },
+                    label = {
+                        Row {
+                            Text("Aadhaar (optional)")
+                            TooltipIcon(toolTips["aadhaar"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(aadhaarFocus),
@@ -268,13 +395,10 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onNext = { amountFocus.requestFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
 
-                Spacer(Modifier.height(8.dp))
-
-                // Amount
                 OutlinedTextField(
                     value = amount,
                     onValueChange = {
@@ -282,7 +406,12 @@ fun TransactionScreen(
                         amount = filtered
                         amountError = null
                     },
-                    label = { Text("Amount") },
+                    label = {
+                        Row {
+                            Text("Amount")
+                            TooltipIcon(toolTips["amount"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(amountFocus),
@@ -295,18 +424,20 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onNext = { descriptionFocus.requestFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
                 amountError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Description
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = {
+                        Row {
+                            Text("Description")
+                            TooltipIcon(toolTips["description"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(descriptionFocus),
@@ -316,13 +447,10 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onNext = { quantityFocus.requestFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
 
-                Spacer(Modifier.height(8.dp))
-
-                // Date
                 OutlinedButton(
                     onClick = {
                         val calendar = Calendar.getInstance()
@@ -349,7 +477,7 @@ fun TransactionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(Icons.Filled.CalendarToday, contentDescription = null)
@@ -357,16 +485,18 @@ fun TransactionScreen(
                     Text(if (date.isBlank()) "Pick Date" else date)
                 }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Quantity
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = {
                         quantity = it.filter { ch -> ch.isDigit() }
                         quantityError = null
                     },
-                    label = { Text("Quantity") },
+                    label = {
+                        Row {
+                            Text("Quantity")
+                            TooltipIcon(toolTips["quantity"] ?: "")
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(quantityFocus),
@@ -379,22 +509,19 @@ fun TransactionScreen(
                     keyboardActions = KeyboardActions(
                         onDone = { focusManager.clearFocus() }
                     ),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     shape = RoundedCornerShape(16.dp)
                 )
                 quantityError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-                Spacer(Modifier.height(8.dp))
-
-                // Image Picker
+                // Image picker and previews
                 Button(
                     onClick = { imgPicker.launch(null) },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = images.size < 5 && !loading
+                    enabled = images.size < 5 && canEdit && !loading
                 ) {
                     Text("Pick Images (max 5)")
                 }
-
                 if (images.isNotEmpty()) {
                     Column {
                         Text("Tap an image to remove")
@@ -409,7 +536,7 @@ fun TransactionScreen(
                                     modifier = Modifier
                                         .size(64.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .clickable(enabled = !loading) {
+                                        .clickable(enabled = canEdit && !loading) {
                                             images = images - uri
                                         }
                                 )
@@ -418,29 +545,36 @@ fun TransactionScreen(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                // Scan History (display only last 5)
+                if (scanHistory.isNotEmpty()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text("Recent Scans:", color = Color.Gray)
+                        scanHistory.take(5).forEach {
+                            Text(it, fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                        }
+                    }
+                }
 
-                // Submit Button
+                Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        // Reset errors
+                        // Validation
                         serialError = null
                         modelError = null
                         amountError = null
                         quantityError = null
 
                         var valid = true
-
-                        if (serialState.isBlank()) {
+                        if ("serial" in requiredFields && serial.isBlank()) {
                             serialError = "Serial is required"
                             valid = false
                         }
-                        if (model.isBlank()) {
+                        if ("model" in requiredFields && model.isBlank()) {
                             modelError = "Model is required"
                             valid = false
                         }
                         val amountDouble = amount.toDoubleOrNull()
-                        if (amount.isBlank()) {
+                        if ("amount" in requiredFields && amount.isBlank()) {
                             amountError = "Amount is required"
                             valid = false
                         } else if (amountDouble == null || amountDouble <= 0.0) {
@@ -448,34 +582,36 @@ fun TransactionScreen(
                             valid = false
                         }
                         val quantityInt = quantity.toIntOrNull()
-                        if (quantity.isBlank()) {
+                        if ("quantity" in requiredFields && quantity.isBlank()) {
                             quantityError = "Quantity is required"
                             valid = false
                         } else if (quantityInt == null || quantityInt <= 0) {
                             quantityError = "Enter a valid positive number"
                             valid = false
                         }
-
+                        if ("date" in requiredFields && date.isBlank()) {
+                            snackbarHostState.showSnackbar("Date is required")
+                            valid = false
+                        }
                         if (!valid) return@Button
 
                         loading = true
 
                         scope.launch {
                             try {
-                                // --- Image upload (if any) ---
+                                // Upload images (stub for cropping/compression)
                                 val imageUrls = mutableListOf<String>()
                                 if (images.isNotEmpty()) {
                                     val storage = FirebaseStorage.getInstance().reference
                                     for ((index, uri) in images.withIndex()) {
-                                        val ref = storage.child("transactions/${serialState}_${System.currentTimeMillis()}_$index.jpg")
+                                        val ref = storage.child("transactions/${serial}_${System.currentTimeMillis()}_$index.jpg")
                                         ref.putFile(uri).await()
                                         imageUrls += ref.downloadUrl.await().toString()
                                     }
                                 }
-
-                                // --- Save transaction ---
+                                // Build transaction object (expand for audit log, etc.)
                                 val transaction = Transaction(
-                                    serial = serialState,
+                                    serial = serial,
                                     model = model,
                                     phone = phone,
                                     aadhaar = aadhaar,
@@ -486,30 +622,24 @@ fun TransactionScreen(
                                     imageUrls = imageUrls,
                                     type = type
                                 )
-
-                                // Logic for Sale/Purchase
-                                val item = inventoryRepo.getItemBySerial(serialState)
-                                if (type == "Sale") {
-                                    if (item == null || item.quantity < 1) {
-                                        snackbarHostState.showSnackbar("Cannot sell: item not in inventory or out of stock.")
-                                        loading = false
-                                        return@launch
-                                    }
-                                } else if (type == "Purchase") {
-                                    if (item != null) {
-                                        snackbarHostState.showSnackbar("Cannot purchase: item with this serial already exists.")
-                                        loading = false
-                                        return@launch
-                                    }
+                                // Role-based logic, backend validation, etc.
+                                val item = inventoryRepo.getItemBySerial(serial)
+                                if (type == "Sale" && (item == null || item.quantity < 1)) {
+                                    snackbarHostState.showSnackbar("Cannot sell: item not in inventory or out of stock.")
+                                    loading = false
+                                    return@launch
+                                } else if (type == "Purchase" && item != null) {
+                                    snackbarHostState.showSnackbar("Cannot purchase: serial already exists.")
+                                    loading = false
+                                    return@launch
                                 }
-
+                                // Add transaction (stub for offline support)
                                 val result = inventoryRepo.addTransaction(transaction)
                                 loading = false
                                 if (result is Result.Success) {
                                     showSuccess = true
                                     snackbarHostState.showSnackbar("Transaction saved successfully!")
-                                    // Optionally clear the form on success:
-                                    serialState = ""
+                                    serial = ""
                                     model = ""
                                     isModelAuto = false
                                     phone = ""
@@ -518,7 +648,6 @@ fun TransactionScreen(
                                     description = ""
                                     quantity = "1"
                                     images = emptyList()
-                                    // navController.popBackStack() // OR stay on the page
                                 } else if (result is Result.Error) {
                                     snackbarHostState.showSnackbar(result.exception?.message ?: "Error saving transaction.")
                                 }
@@ -532,7 +661,7 @@ fun TransactionScreen(
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(RoundedCornerShape(28.dp)),
-                    enabled = !loading,
+                    enabled = canEdit && !loading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -547,32 +676,7 @@ fun TransactionScreen(
                     Text("Save Transaction", style = MaterialTheme.typography.titleMedium)
                 }
 
-                // Animated error/success feedback
-                AnimatedVisibility(
-                    visible = serialError != null || modelError != null || amountError != null || quantityError != null,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
-                    Column {
-                        serialError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-                        }
-                        modelError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-                        }
-                        amountError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-                        }
-                        quantityError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-                        }
-                    }
-                }
-                AnimatedVisibility(
-                    visible = showSuccess,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically()
-                ) {
+                AnimatedVisibility(visible = showSuccess) {
                     Text(
                         "Transaction successful!",
                         color = Color(0xFF388E3C),
@@ -585,6 +689,31 @@ fun TransactionScreen(
     }
 }
 
+// Tooltip icon composable
+@Composable
+fun TooltipIcon(tip: String) {
+    var showTip by remember { mutableStateOf(false) }
+    Box {
+        Icon(
+            imageVector = Icons.Filled.Info,
+            contentDescription = "Help",
+            modifier = Modifier
+                .size(16.dp)
+                .clickable { showTip = true }
+        )
+        DropdownMenu(
+            expanded = showTip,
+            onDismissRequest = { showTip = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(tip, color = Color.DarkGray) },
+                onClick = { showTip = false }
+            )
+        }
+    }
+}
+
+// SegmentedButton as before
 @Composable
 fun SegmentedButton(
     options: List<String>,

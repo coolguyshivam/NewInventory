@@ -72,6 +72,7 @@ dependencies {
 	//firebase
 	implementation 'com.google.firebase:firebase-core:21.1.1'
 	implementation 'com.google.firebase:firebase-auth:22.1.2'
+	implementation 'com.google.firebase:firebase-storage-ktx:20.3.0'
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'
@@ -82,3 +83,4 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
+	apply plugin: 'com.google.gms.google-services'
