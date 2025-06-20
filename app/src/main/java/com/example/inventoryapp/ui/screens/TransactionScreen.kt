@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.Transaction
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
@@ -53,6 +52,7 @@ fun TransactionScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccess by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     // Barcode scan integration
     val scannedSerial = navController.currentBackStackEntry
@@ -80,12 +80,10 @@ fun TransactionScreen(
         ).show()
     }
 
-    // Auto-fill model for Sale (fixed coroutine scope)
+    // Auto-fill model for Sale
     LaunchedEffect(serial, type) {
         if (type == "Sale" && serial.isNotBlank()) {
-            // Use rememberCoroutineScope for Compose-safe launching
-            val scope = rememberCoroutineScope()
-            scope.launch(Dispatchers.IO) {
+            coroutineScope.launch(Dispatchers.IO) {
                 val item = inventoryRepo.getItemBySerial(serial)
                 if (item != null && item.quantity > 0) {
                     model = item.model
@@ -96,10 +94,8 @@ fun TransactionScreen(
         }
     }
 
-    // Fix: use rememberCoroutineScope for submit as well to avoid leaking Compose context
-    val submitScope = rememberCoroutineScope()
     fun validateAndSubmit() {
-        submitScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(Dispatchers.IO) {
             val item = inventoryRepo.getItemBySerial(serial)
             if (type == "Sale") {
                 if (item == null || item.quantity < 1) {
