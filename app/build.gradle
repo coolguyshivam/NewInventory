@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.google.devtools.ksp'
+    id 'com.google.devtools.ksp' version '1.9.22-1.0.18'
 }
 
 android {
@@ -33,9 +33,9 @@ android {
     buildFeatures {
         compose true
     }
-//    composeOptions {
-//        kotlinCompilerExtensionVersion '1.5.10'
-//    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.10'
+    }
 }
 
 dependencies {
@@ -71,5 +71,3 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
-
-// DO NOT include 'androidx.compose.runtime:runtime' explicitly - it's covered by the BOM
