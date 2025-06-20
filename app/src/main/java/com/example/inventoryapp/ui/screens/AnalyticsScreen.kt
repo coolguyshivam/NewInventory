@@ -32,9 +32,9 @@ fun AnalyticsScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            Text("Total Sales: ₹$totalSales", style = MaterialTheme.typography.titleLarge)
+            Text("Total Sales: \u20b9$totalSales", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
-            Text("Total Purchases: ₹$totalPurchases", style = MaterialTheme.typography.titleLarge)
+            Text("Total Purchases: \u20b9$totalPurchases", style = MaterialTheme.typography.titleLarge)
             // Add more charts and analytics as needed...
         }
     }

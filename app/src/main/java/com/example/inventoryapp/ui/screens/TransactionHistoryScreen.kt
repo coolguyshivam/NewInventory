@@ -40,7 +40,7 @@ fun TransactionHistoryScreen(
                     Column(Modifier.padding(12.dp)) {
                         Text("Type: ${tx.type} | Serial: ${tx.serial}")
                         Text("Model: ${tx.model}")
-                        Text("Amount: ₹${tx.amount}")
+                        Text("Amount: \u20b9${tx.amount}")
                         Text("Date: ${tx.date}")
                         Text("Quantity: ${tx.quantity}")
                         if (tx.description.isNotBlank())
