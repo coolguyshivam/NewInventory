@@ -25,7 +25,12 @@ class InventoryRepository {
     suspend fun getAllTransactions(): Result<List<Transaction>> {
         return Result.Success(transactions.toList())
     }
-
+	
+	suspend fun getAllInventoryItems(): List<InventoryItem> {
+    // If you have an in-memory list:
+    return inventoryItems.toList()
+	}
+	
     suspend fun addTransaction(transaction: Transaction): Result<Unit> {
         // Update inventory locally
         when (transaction.type) {
