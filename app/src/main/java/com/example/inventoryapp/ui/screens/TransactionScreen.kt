@@ -27,6 +27,7 @@ fun TransactionScreen(
             TransactionTopBar(navController = navController)
         }
     ) { paddingValues ->
+        // Use a Column with the form for lighter recomposition
         TransactionForm(
             navController = navController,
             inventoryRepo = inventoryRepo,

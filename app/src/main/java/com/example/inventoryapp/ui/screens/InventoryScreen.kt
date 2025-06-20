@@ -59,17 +59,16 @@ fun InventoryScreen(
     }
 
     // --- Robust local inventory collection ---
-    // If you do NOT use Flow, just call a suspend function in LaunchedEffect:
     val inventory = remember { mutableStateListOf<InventoryItem>() }
 
-    // Simulate loading inventory items
+    // Efficient loading
     LaunchedEffect(isRefreshing) {
         inventory.clear()
-        val list = inventoryRepo.getAllInventoryItems() // <-- Implement this in your InventoryRepository
+        val list = inventoryRepo.getAllInventoryItems()
         inventory.addAll(list)
     }
 
-    // Barcode scan integration
+    // Barcode scan integration & filter logic
     val scannedSerial = navController.currentBackStackEntry
         ?.savedStateHandle
         ?.get<String>("scannedSerial")
@@ -80,7 +79,7 @@ fun InventoryScreen(
         }
     }
 
-    // Filter logic
+    // Filter and grouping
     val filteredInventory = remember(inventory, filterText) {
         if (filterText.isBlank()) inventory.toList()
         else inventory.filter {
@@ -163,6 +162,7 @@ fun InventoryScreen(
                         Text("No items in inventory.")
                     }
                 } else {
+                    // Use LazyColumn for large lists (performance boost)
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
