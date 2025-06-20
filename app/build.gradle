@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.google.devtools.ksp' version '2.0.0-1'
+    id 'com.google.devtools.ksp' version '2.1.21-2.0.2'
 }
 
 android {
@@ -33,9 +33,9 @@ android {
     buildFeatures {
         compose true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion '1.5.10'
-    }
+//    composeOptions {
+//        kotlinCompilerExtensionVersion '1.5.10'
+//    }
 }
 
 dependencies {
@@ -52,6 +52,7 @@ dependencies {
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     // Compose Lifecycle for collectAsStateWithLifecycle
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
+	implementation 'com.google.android.material:material:1.11.0'
 
     // Room (use KSP for annotation processing)
     implementation 'androidx.room:room-runtime:2.6.1'
