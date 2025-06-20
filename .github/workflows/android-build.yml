@@ -29,6 +29,9 @@ jobs:
 #    - name: Clean APK
 #      run:  ./gradlew clean build
 
+    - name: check dependency
+      run:  ./gradlew app:dependencies --configuration implementation
+      
     - name: Clean APK
       run:  ./gradlew clean build --refresh-dependencies --stacktrace
 
