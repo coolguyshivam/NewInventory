@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose' // New Compose plugin as per latest guidance
-    id 'kotlin-kapt' // For Room
+    id 'com.google.devtools.ksp' version '1.0.20'
 }
 
 android {
@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.inventoryapp"
-        minSdk 21
+        minSdk 23
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -60,9 +60,9 @@ dependencies {
     implementation 'com.google.mlkit:barcode-scanning:17.2.0'
 
     // Room (Database for offline queue)
-    implementation "androidx.room:room-runtime:2.5.2"
-    kapt "androidx.room:room-compiler:2.5.2"
-    implementation "androidx.room:room-ktx:2.5.2"
+    implementation "androidx.room:room-runtime:2.6.1"
+    kapt "androidx.room:room-compiler:2.6.1
+    implementation "androidx.room:room-ktx:2.6.1"
 	implementation 'com.google.android.material:material:1.9.0'
 
     // WorkManager (for offline/background sync)
@@ -82,7 +82,7 @@ dependencies {
 	implementation "com.google.accompanist:accompanist-swiperefresh:0.36.0"
 	implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
 	implementation 'androidx.compose.runtime:runtime' // Or your Compose version
-	implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.6.2' // If using collectAsStateWithLifecycle
+	implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0' // If using collectAsStateWithLifecycle
 }
 
 // Google services plugin for Firebase (keep this at the bottom)
