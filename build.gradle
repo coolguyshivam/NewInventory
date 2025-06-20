@@ -11,6 +11,3 @@ buildscript {
         classpath 'com.google.gms:google-services:4.4.1'
     }
 }
-ext {
-    compose_bom_version = '2024.05.00'
-}
