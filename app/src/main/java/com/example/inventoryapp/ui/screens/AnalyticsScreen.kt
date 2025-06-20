@@ -6,12 +6,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
@@ -34,12 +34,10 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
 
     // Generate filter options
     val types = remember(transactions) { listOf("All") + transactions.map { it.type }.distinct().sorted() }
-    val users = remember(transactions) { listOf("All") + transactions.mapNotNull { it.user }.distinct().sorted() }
     val models = remember(transactions) { listOf("All") + transactions.mapNotNull { it.model }.distinct().sorted() }
 
     // Filter state
     var selectedType by remember { mutableStateOf("All") }
-    var selectedUser by remember { mutableStateOf("All") }
     var selectedModel by remember { mutableStateOf("All") }
     var minAmount by remember { mutableStateOf("") }
     var maxAmount by remember { mutableStateOf("") }
@@ -49,7 +47,6 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
     // Filtering logic
     val filtered = transactions.filter { tx ->
         (selectedType == "All" || tx.type.equals(selectedType, ignoreCase = true)) &&
-        (selectedUser == "All" || (tx.user?.equals(selectedUser, ignoreCase = true) == true)) &&
         (selectedModel == "All" || (tx.model?.equals(selectedModel, ignoreCase = true) == true)) &&
         (minAmount.toDoubleOrNull()?.let { tx.amount >= it } ?: true) &&
         (maxAmount.toDoubleOrNull()?.let { tx.amount <= it } ?: true) &&
@@ -89,13 +86,6 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
                 options = types,
                 selected = selectedType,
                 onSelected = { selectedType = it }
-            )
-            Spacer(Modifier.height(6.dp))
-            FilterRow(
-                label = "User",
-                options = users,
-                selected = selectedUser,
-                onSelected = { selectedUser = it }
             )
             Spacer(Modifier.height(6.dp))
             FilterRow(
@@ -175,7 +165,7 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
                         ) {
                             Column(Modifier.padding(10.dp)) {
                                 Text("${tx.type} | ₹${tx.amount} | ${tx.date}", style = MaterialTheme.typography.titleSmall)
-                                Text("Model: ${tx.model ?: "-"}  User: ${tx.user ?: "-"}", style = MaterialTheme.typography.bodySmall)
+                                Text("Model: ${tx.model ?: "-"}", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }

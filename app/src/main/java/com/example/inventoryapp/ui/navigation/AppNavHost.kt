@@ -1,12 +1,13 @@
 package com.example.inventoryapp.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddShoppingCart
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.NavHostController
@@ -16,27 +17,23 @@ import com.example.inventoryapp.data.AuthRepository
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.ui.screens.*
+import androidx.compose.foundation.layout.padding
 
-sealed class MainScreen(val route: String, val label: String, val icon: @Composable () -> Unit) {
+sealed class MainScreen(val route: String, val label: String, val icon: ImageVector) {
     object Inventory : MainScreen(
         "inventory",
         "Inventory",
-        { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Inventory") }
+        Icons.AutoMirrored.Filled.List
     )
     object Transaction : MainScreen(
         "transaction",
         "Transaction",
-        { Icon(Icons.Filled.AddShoppingCart, contentDescription = "Transaction") }
-    )
-    object TransactionHistory : MainScreen(
-        "transaction_history",
-        "Transaction History",
-        { Icon(Icons.Filled.Receipt, contentDescription = "Transaction History") }
+        Icons.Filled.SwapHoriz
     )
     object Analytics : MainScreen(
         "analytics",
         "Analytics",
-        { Icon(Icons.Filled.ShowChart, contentDescription = "Analytics") }
+        Icons.Filled.ShowChart
     )
 }
 
@@ -53,7 +50,6 @@ fun AppNavHost(
     val mainScreens = buildList {
         add(MainScreen.Inventory)
         add(MainScreen.Transaction)
-        add(MainScreen.TransactionHistory)
         if (userRole == UserRole.ADMIN) add(MainScreen.Analytics)
     }
 
@@ -65,7 +61,7 @@ fun AppNavHost(
                     val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("/")
                     mainScreens.forEach { screen ->
                         NavigationBarItem(
-                            icon = { screen.icon() },
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
                             label = { Text(screen.label) },
                             selected = currentRoute == screen.route,
                             onClick = {
@@ -102,29 +98,12 @@ fun AppNavHost(
             }
             composable(MainScreen.Inventory.route) {
                 showBottomBar = true
-                InventoryScreen(navController, inventoryRepo, authRepo)
+                InventoryScreen(navController, inventoryRepo)
             }
             composable(MainScreen.Transaction.route) {
                 showBottomBar = true
-                TransactionScreen(navController, inventoryRepo, serial = "")
-            }
-            composable(
-                route = "transaction/{serial}",
-                arguments = listOf(
-                    navArgument("serial") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                        nullable = false
-                    }
-                )
-            ) { backStackEntry ->
-                showBottomBar = false
-                val serial = backStackEntry.arguments?.getString("serial") ?: ""
-                TransactionScreen(navController, inventoryRepo, serial)
-            }
-            composable(MainScreen.TransactionHistory.route) {
-                showBottomBar = true
-                TransactionHistoryScreen(inventoryRepo)
+                // Pass the actual userRole if needed by TransactionScreen
+                TransactionScreen(navController, inventoryRepo, userRole)
             }
             if (userRole == UserRole.ADMIN) {
                 composable(MainScreen.Analytics.route) {
@@ -132,7 +111,28 @@ fun AppNavHost(
                     AnalyticsScreen(inventoryRepo)
                 }
             }
-            composable("addEditItem/{itemId?}") { backStackEntry ->
+            composable(
+                route = "transaction_screen?type={type}&serial={serial}&model={model}",
+                arguments = listOf(
+                    navArgument("type") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                    navArgument("serial") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                    navArgument("model") { type = NavType.StringType; defaultValue = ""; nullable = true }
+                )
+            ) { backStackEntry ->
+                showBottomBar = false
+                // Optionally: use arguments for TransactionScreen if needed
+                TransactionScreen(
+                    navController,
+                    inventoryRepo,
+                    userRole
+                )
+            }
+            composable(
+                route = "addEditItem/{itemId?}",
+                arguments = listOf(
+                    navArgument("itemId") { type = NavType.StringType; defaultValue = null; nullable = true }
+                )
+            ) { backStackEntry ->
                 showBottomBar = false
                 AddEditItemScreen(
                     navController = navController,
