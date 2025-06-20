@@ -1,5 +1,7 @@
 package com.example.inventoryapp.data
 
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
 import kotlinx.coroutines.flow.Flow

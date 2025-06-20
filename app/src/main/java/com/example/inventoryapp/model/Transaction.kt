@@ -1,5 +1,8 @@
 package com.example.inventoryapp.model
 
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+
 data class Transaction(
     val type: String = "",
     val model: String = "",
