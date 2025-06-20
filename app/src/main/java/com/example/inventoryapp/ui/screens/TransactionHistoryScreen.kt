@@ -7,8 +7,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.data.InventoryRepository
+import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionHistoryScreen(
     inventoryRepo: InventoryRepository
@@ -17,7 +19,10 @@ fun TransactionHistoryScreen(
 
     LaunchedEffect(Unit) {
         transactions.clear()
-        transactions.addAll(inventoryRepo.getAllTransactions())
+        val result = inventoryRepo.getAllTransactions()
+        if (result is Result.Success) {
+            transactions.addAll(result.data)
+        }
     }
 
     Scaffold(

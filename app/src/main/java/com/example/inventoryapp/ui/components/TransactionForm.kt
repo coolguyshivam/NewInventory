@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
@@ -110,8 +111,9 @@ fun TransactionForm(
     var modelSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
     LaunchedEffect(model) {
         if (model.isNotBlank()) {
-            modelSuggestions =
-                inventoryRepo.getAllModels().filter { it.contains(model, ignoreCase = true) }.take(5)
+            // Must be suspend and return List<String>
+            val models = inventoryRepo.getAllModels() // fix: use correct function in repository
+            modelSuggestions = models.filter { it.contains(model, ignoreCase = true) }.take(5)
         } else {
             modelSuggestions = emptyList()
         }

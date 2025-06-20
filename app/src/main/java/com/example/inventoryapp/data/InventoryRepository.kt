@@ -1,67 +1,105 @@
 package com.example.inventoryapp.data
 
-import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.example.inventoryapp.model.InventoryItem
+
+sealed class Result<out T> {
+    data class Success<out T>(val data: T): Result<T>()
+    data class Error(val exception: Exception?): Result<Nothing>()
+}
+
+// Local in-memory data stores for now
+private val inventoryItems = mutableListOf(
+    InventoryItem(serial = "S1001", model = "ModelX", quantity = 10),
+    InventoryItem(serial = "S1002", model = "ModelY", quantity = 5)
+)
+private val transactions = mutableListOf<Transaction>()
 
 class InventoryRepository {
-    private val inventory = mutableListOf<InventoryItem>()
-    private val transactions = mutableListOf<Transaction>()
 
-    // Flow for inventory
-    private val inventoryFlow = MutableStateFlow(inventory.toList())
-    fun getInventoryFlow(): Flow<List<InventoryItem>> = inventoryFlow.asStateFlow()
-
-    // Flow for transactions
-    private val transactionsFlow = MutableStateFlow(transactions.toList())
-    fun getAllTransactionsFlow(): Flow<List<Transaction>> = transactionsFlow.asStateFlow()
-
-    fun getInventory(): Result<List<InventoryItem>> {
-        return try {
-            Result.Success(inventory)
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
+    // --------- LOCAL IMPLEMENTATION ---------
+    suspend fun getAllModels(): List<String> {
+        return inventoryItems.map { it.model }.distinct()
     }
 
-    fun getAllTransactions(): Result<List<Transaction>> {
-        return try {
-            Result.Success(transactions)
-        } catch (e: Exception) {
-            Result.Error(e)
-        }
+    suspend fun getItemBySerial(serial: String): InventoryItem? {
+        return inventoryItems.find { it.serial == serial }
     }
 
-    fun addTransaction(transaction: Transaction): Result<Unit> {
-        return try {
-            transactions.add(transaction)
-            val item = inventory.find { it.serial == transaction.serial }
-            if (item != null) {
-                when (transaction.type) {
-                    "Purchase" -> item.quantity += transaction.quantity
-                    "Sale" -> item.quantity -= transaction.quantity
+    suspend fun getAllTransactions(): Result<List<Transaction>> {
+        return Result.Success(transactions.toList())
+    }
+
+    suspend fun addTransaction(transaction: Transaction): Result<Unit> {
+        // Update inventory locally
+        when (transaction.type) {
+            "Purchase" -> {
+                if (inventoryItems.any { it.serial == transaction.serial }) {
+                    return Result.Error(Exception("Serial already exists"))
                 }
-            } else if (transaction.type == "Purchase") {
-                inventory.add(
+                inventoryItems.add(
                     InventoryItem(
                         serial = transaction.serial,
-                        name = transaction.model,
+                        model = transaction.model,
                         quantity = transaction.quantity
                     )
                 )
             }
-            // Update both flows!
-            inventoryFlow.value = inventory.toList()
-            transactionsFlow.value = transactions.toList()
+            "Sale" -> {
+                val item = inventoryItems.find { it.serial == transaction.serial }
+                if (item == null || item.quantity < transaction.quantity) {
+                    return Result.Error(Exception("Not in inventory or not enough stock"))
+                }
+                item.quantity -= transaction.quantity
+            }
+            // Add logic for other types if needed
+        }
+        transactions.add(transaction)
+        return Result.Success(Unit)
+    }
+
+    // --------- FIREBASE IMPLEMENTATION (example, replace above when ready) ---------
+    /*
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    suspend fun getAllModels(): List<String> {
+        return try {
+            val snapshot = db.collection("inventory").get().await()
+            snapshot.documents.mapNotNull { it.getString("model") }.distinct()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getItemBySerial(serial: String): InventoryItem? {
+        return try {
+            val snapshot = db.collection("inventory")
+                .whereEqualTo("serial", serial)
+                .get().await()
+            val doc = snapshot.documents.firstOrNull()
+            doc?.toObject(InventoryItem::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun getAllTransactions(): Result<List<Transaction>> {
+        return try {
+            val snapshot = db.collection("transactions").get().await()
+            val txs = snapshot.documents.mapNotNull { it.toObject(Transaction::class.java) }
+            Result.Success(txs)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
+    suspend fun addTransaction(transaction: Transaction): Result<Unit> {
+        return try {
+            db.collection("transactions").add(transaction).await()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
-
-    fun getItemBySerial(serial: String): InventoryItem? {
-        return inventory.find { it.serial == serial }
-    }
+    */
 }

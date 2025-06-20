@@ -4,6 +4,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.compose.foundation.layout.padding
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.ui.components.TransactionForm
