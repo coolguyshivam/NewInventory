@@ -23,12 +23,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    compileOption5 {
+    compileOption3 {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 	composeOptions {
-        kotlinCompilerExtensionVersion = '1.5.15'
+        kotlinCompilerExtensionVersion = '1.5.13'
     }
     kotlinOptions {
         jvmTarget = '17'
