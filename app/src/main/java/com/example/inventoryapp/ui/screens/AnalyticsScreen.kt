@@ -101,14 +101,14 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
                     value = minAmount,
                     onValueChange = { minAmount = it.filter { c -> c.isDigit() || c == '.' } },
                     label = { Text("Min ₹") },
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = KeyboardType.Number),
+					keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = maxAmount,
                     onValueChange = { maxAmount = it.filter { c -> c.isDigit() || c == '.' } },
                     label = { Text("Max ₹") },
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = KeyboardType.Number),
+					keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }
