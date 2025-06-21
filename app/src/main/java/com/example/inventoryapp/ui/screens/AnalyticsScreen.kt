@@ -17,6 +17,7 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import kotlin.math.max
+import androidx.compose.foundation.text.KeyboardOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,6 +176,7 @@ fun AnalyticsScreen(inventoryRepo: InventoryRepository) {
     }
 }
 
+// --- Refactored FilterRow ---
 @Composable
 fun FilterRow(
     label: String,
@@ -183,29 +185,37 @@ fun FilterRow(
     onSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedTextField(
-            value = selected,
-            onValueChange = {},
-            label = { Text(label) },
-            readOnly = true,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .clickable { expanded = true }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(end = 8.dp)
         )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onSelected(option)
-                        expanded = false
-                    }
-                )
+        Box(Modifier.weight(1f)) {
+            OutlinedTextField(
+                value = selected,
+                onValueChange = {},
+                readOnly = true,
+                label = null, // No internal label, label is on the left
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true }
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            onSelected(option)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
