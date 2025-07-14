@@ -170,73 +170,78 @@ fun TransactionScreen(
     suspend fun validateFormSuspend(): Boolean {
         var isValid = true
         val item = inventoryRepo.getItemBySerial(serialNumber)
-        if (serialNumber.isBlank()) {
-            serialError = "Serial number is required"
+        
+        if (!ValidationUtils.isValidSerialNumber(serialNumber)) {
+            serialError = "Serial number is required (min 3 characters)"
             isValid = false
         } else {
             serialError = null
         }
-        if ((selectedTransactionType == "Purchase" && modelName.isBlank())
-            || (selectedTransactionType != "Purchase" && (item?.model.isNullOrBlank()))
+        
+        if ((selectedTransactionType == Constants.TRANSACTION_TYPE_PURCHASE && !ValidationUtils.isValidModelName(modelName))
+            || (selectedTransactionType != Constants.TRANSACTION_TYPE_PURCHASE && !ValidationUtils.isValidModelName(item?.model ?: ""))
         ) {
-            modelError = "Model name is required"
+            modelError = "Model name is required (min 2 characters)"
             isValid = false
         } else {
             modelError = null
         }
-        if (customerName.isBlank()) {
-            customerNameError = "Customer name is required"
+        
+        if (!ValidationUtils.isValidCustomerName(customerName)) {
+            customerNameError = "Customer name is required (min 2 characters)"
             isValid = false
         } else {
             customerNameError = null
         }
-        if (phoneNumber.isNotBlank() && phoneNumber.length != 10) {
-            phoneError = "Phone number must be 10 digits"
+        
+        if (!ValidationUtils.isValidPhoneNumber(phoneNumber)) {
+            phoneError = "Phone number must be exactly ${Constants.PHONE_NUMBER_LENGTH} digits"
             isValid = false
         } else {
             phoneError = null
         }
-        if (aadhaarNumber.isNotBlank() && aadhaarNumber.length != 12) {
-            aadhaarError = "Aadhaar number must be 12 digits"
+        
+        if (!ValidationUtils.isValidAadhaarNumber(aadhaarNumber)) {
+            aadhaarError = "Aadhaar number must be exactly ${Constants.AADHAAR_NUMBER_LENGTH} digits"
             isValid = false
         } else {
             aadhaarError = null
         }
-        if (amount.isBlank() || amount.toDoubleOrNull() == null || amount.toDouble() <= 0.0) {
-            amountError = "Valid amount is required"
+        
+        if (!ValidationUtils.isValidAmount(amount)) {
+            amountError = "Valid amount is required (must be positive)"
             isValid = false
         } else {
             amountError = null
         }
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val today = sdf.parse(sdf.format(Date()))
-        val selected = kotlin.runCatching { sdf.parse(transactionDate) }.getOrNull()
-        if (selected == null || selected.after(today)) {
+        
+        if (!ValidationUtils.isValidDate(transactionDate)) {
             dateError = "Date cannot be in the future"
             isValid = false
         } else {
             dateError = null
         }
+        
         when (selectedTransactionType) {
-            "Sale" -> {
+            Constants.TRANSACTION_TYPE_SALE -> {
                 if (item == null || item.quantity < 1 || item.isSold || item.isInRepair) {
                     serialError = "Serial not in inventory or unavailable"
                     isValid = false
                 }
             }
-            "Purchase" -> {
+            Constants.TRANSACTION_TYPE_PURCHASE -> {
                 if (item != null) {
                     serialError = "Serial already exists in inventory"
                     isValid = false
                 }
             }
-            "Repair" -> {
+            Constants.TRANSACTION_TYPE_REPAIR -> {
                 if (item == null || item.isSold) {
                     serialError = "Serial not found in inventory or already sold"
                     isValid = false
                 }
             }
-            "Return" -> {
+            Constants.TRANSACTION_TYPE_RETURN -> {
                 if (item == null || (!item.isSold && !item.isInRepair)) {
                     serialError = "Serial must be sold or marked in repair before return"
                     isValid = false
