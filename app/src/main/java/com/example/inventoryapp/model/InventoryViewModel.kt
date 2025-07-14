@@ -215,7 +215,7 @@ class InventoryViewModel(
         }
     }
 
-    fun loadNextTransactionPage(serial: String, limit: Int = 20) {
+    fun loadNextTransactionPage(serial: String, limit: Int = Constants.DEFAULT_TRANSACTION_LIMIT) {
         loadTransactionHistory(serial, paginate = true, limit = limit)
     }
 
