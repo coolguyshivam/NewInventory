@@ -48,17 +48,36 @@ fun BarcodeScannerScreen(navController: NavController) {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.CAMERA
+                Constants.PERMISSION_CAMERA
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        hasCameraPermission = granted
+    
+    var permissionDeniedPermanently by remember { mutableStateOf(false) }
+    
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            hasCameraPermission = true
+            permissionDeniedPermanently = false
+        } else {
+            // Check if permission was denied permanently
+            val shouldShowRationale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                (context as? androidx.activity.ComponentActivity)?.shouldShowRequestPermissionRationale(
+                    Constants.PERMISSION_CAMERA
+                ) == false
+            } else {
+                false
+            }
+            permissionDeniedPermanently = shouldShowRationale
+        }
     }
 
+    // Check permission status on first load
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
+            permissionLauncher.launch(Constants.PERMISSION_CAMERA)
         }
     }
 
@@ -72,27 +91,16 @@ fun BarcodeScannerScreen(navController: NavController) {
     ) {
         when {
             !hasCameraPermission -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Camera,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Camera permission is required to scan barcodes.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
+                PermissionRequestContent(
+                    permissionDeniedPermanently = permissionDeniedPermanently,
+                    onRequestPermission = { permissionLauncher.launch(Constants.PERMISSION_CAMERA) },
+                    onOpenSettings = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
                     }
-                }
+                )
             }
             else -> {
                 // Camera preview
@@ -176,6 +184,54 @@ fun BarcodeScannerScreen(navController: NavController) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun PermissionRequestContent(
+    permissionDeniedPermanently: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Camera,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = if (permissionDeniedPermanently) {
+                "Camera permission is required to scan barcodes. Please enable it in app settings."
+            } else {
+                "Camera permission is required to scan barcodes."
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(16.dp))
+        
+        if (permissionDeniedPermanently) {
+            Button(
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Open Settings")
+            }
+        } else {
+            Button(
+                onClick = onRequestPermission,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Grant Permission")
             }
         }
     }
