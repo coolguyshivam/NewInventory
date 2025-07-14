@@ -37,7 +37,14 @@ fun AppNavHost(
     userRole: UserRole,
     modifier: Modifier = Modifier
 ) {
-    var showBottomBar by remember { mutableStateOf(true) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("?")
+    
+    // Determine if bottom bar should be shown based on current route
+    val showBottomBar = when (currentRoute) {
+        "splash", "login", "register", "barcode_scanner" -> false
+        else -> true
+    }
 
     val mainScreens = buildList {
         add(MainScreen.Inventory)
@@ -50,8 +57,6 @@ fun AppNavHost(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentRoute = navBackStackEntry?.destination?.route?.substringBefore("?")
                     mainScreens.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = screen.label) },
@@ -88,29 +93,23 @@ fun AppNavHost(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("splash") {
-                showBottomBar = false
                 SplashScreen(navController, authRepo)
             }
             composable("login") {
-                showBottomBar = false
                 LoginScreen(navController, authRepo)
             }
             composable("register") {
-                showBottomBar = false
                 RegisterScreen(navController, authRepo)
             }
             composable(MainScreen.Inventory.route) {
-                showBottomBar = true
                 val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.provideFactory(inventoryRepo, userRole))
                 InventoryScreen(navController, inventoryViewModel, inventoryRepo)
             }
             composable(MainScreen.Transaction.route) {
-                showBottomBar = true
                 TransactionScreen(navController, inventoryRepo, userRole)
             }
             if (userRole == UserRole.ADMIN) {
                 composable(MainScreen.Analytics.route) {
-                    showBottomBar = true
                     AnalyticsScreen(inventoryRepo = inventoryRepo, userRole = userRole)
                 }
             }
@@ -123,7 +122,6 @@ fun AppNavHost(
                     navArgument("model") { type = NavType.StringType; defaultValue = ""; nullable = true }
                 )
             ) { backStackEntry ->
-                showBottomBar = false
                 val type = backStackEntry.arguments?.getString("type") ?: ""
                 val serial = backStackEntry.arguments?.getString("serial") ?: ""
                 val model = backStackEntry.arguments?.getString("model") ?: ""
@@ -137,7 +135,6 @@ fun AppNavHost(
                 )
             }
             composable(MainScreen.TransactionHistory.route) {
-                showBottomBar = true
                 TransactionHistoryScreen(
                     inventoryRepo = inventoryRepo,
                     navController = navController,
@@ -146,7 +143,6 @@ fun AppNavHost(
                 )
             }
             composable("barcode_scanner") {
-                showBottomBar = false
                 BarcodeScannerScreen(navController)
             }
         }
