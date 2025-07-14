@@ -60,31 +60,44 @@ class InventoryViewModel(
         loadInventory()
     }
 
-    fun loadInventory(paginate: Boolean = false, limit: Int = 100) {
-        _loading.value = true
-        _error.value = null
+    fun loadInventory(paginate: Boolean = false, limit: Int = Constants.DEFAULT_INVENTORY_LIMIT) {
         viewModelScope.launch(Dispatchers.IO) {
-            val result = repo.getAllItems(limit = limit, startAfter = if (paginate) lastInventorySerial else null)
-            when (result) {
-                is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
-                    removedItems.forEach { item ->
-                        repo.deleteItem(item.serial)
+            inventoryMutex.withLock {
+                _loading.postValue(true)
+                _error.postValue(null)
+                
+                try {
+                    val result = repo.getAllItems(limit = limit, startAfter = if (paginate) lastInventorySerial else null)
+                    when (result) {
+                        is Result.Success -> {
+                            // Filter items on background thread to avoid blocking UI
+                            val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
+                            val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
+                            
+                            // Delete invalid items asynchronously
+                            removedItems.forEach { item ->
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    repo.deleteItem(item.serial)
+                                }
+                            }
+                            
+                            if (paginate) {
+                                _inventory.postValue((_inventory.value ?: emptyList()) + validItems)
+                            } else {
+                                _inventory.postValue(validItems)
+                            }
+                            lastInventorySerial = validItems.lastOrNull()?.serial
+                        }
+                        is Result.Error -> {
+                            _error.postValue(result.exception?.message ?: Constants.ERROR_ITEM_NOT_FOUND)
+                        }
                     }
-                    if (paginate) {
-                        _inventory.postValue((_inventory.value ?: emptyList()) + validItems)
-                    } else {
-                        _inventory.postValue(validItems)
-                    }
-                    lastInventorySerial = validItems.lastOrNull()?.serial
-                }
-                is Result.Error -> {
-                    _error.postValue(result.exception?.message ?: "Error loading inventory")
+                } catch (e: Exception) {
+                    _error.postValue(e.message ?: Constants.ERROR_NETWORK_UNAVAILABLE)
+                } finally {
+                    _loading.postValue(false)
                 }
             }
-            _loading.postValue(false)
         }
     }
 
