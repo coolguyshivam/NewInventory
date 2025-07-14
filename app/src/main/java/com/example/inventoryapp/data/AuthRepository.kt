@@ -48,18 +48,23 @@ class AuthRepository(private val context: Context) {
     }
 
     fun login(username: String, password: String): Result<User> {
-        // Allow blank credentials for testing - default to admin
-        if (username.isBlank() && password.isBlank()) {
-            val adminUser = defaultUsers.first { it.role == UserRole.ADMIN }
-            _currentUser.value = adminUser
-            prefs.edit().putString("current_user", adminUser.username).apply()
-            return Result.Success(adminUser)
+        // Validate input
+        if (username.isBlank() || password.isBlank()) {
+            return Result.Error(Exception("Username and password are required"))
+        }
+        
+        // Sanitize input
+        val sanitizedUsername = ValidationUtils.sanitizeInput(username)
+        
+        // Validate password strength
+        if (!ValidationUtils.isValidPassword(password)) {
+            return Result.Error(Exception("Password must be at least 6 characters with letters and numbers"))
         }
 
-        val user = getUser(username)
+        val user = getUser(sanitizedUsername)
         return if (user != null && user.passwordHash == hashPassword(password)) {
             _currentUser.value = user
-            prefs.edit().putString("current_user", username).apply()
+            prefs.edit().putString("current_user", sanitizedUsername).apply()
             Result.Success(user)
         } else {
             Result.Error(Exception("Invalid username or password"))
