@@ -169,9 +169,9 @@ fun InventoryScreen(
                                     val result = inventoryRepo.deleteItem(item.serial)
                                     if (result is com.example.inventoryapp.data.Result.Success) {
                                         viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item deleted")
+                                        snackbarHostState.showSnackbar(Constants.SUCCESS_ITEM_DELETED)
                                     } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                        snackbarHostState.showSnackbar(result.exception?.message ?: Constants.ERROR_TRANSACTION_FAILED)
                                     }
                                 }
                             },
