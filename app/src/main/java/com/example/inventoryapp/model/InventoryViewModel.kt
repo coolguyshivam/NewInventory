@@ -101,7 +101,7 @@ class InventoryViewModel(
         }
     }
 
-    fun loadNextInventoryPage(limit: Int = 100) {
+    fun loadNextInventoryPage(limit: Int = Constants.DEFAULT_INVENTORY_LIMIT) {
         loadInventory(paginate = true, limit = limit)
     }
 
