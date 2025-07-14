@@ -93,34 +93,55 @@ class FirebaseInventoryRepository(
         }
     }
 
-    override suspend fun addOrUpdateItem(serial: String, item: InventoryItem): Result<Unit> = try {
-        db.collection("inventory").document(serial).set(item).await()
-        Result.Success(Unit)
-    } catch (e: Exception) {
-        Result.Error(e)
-    }
-
-    override suspend fun deleteItem(serial: String): Result<Unit> = try {
-        db.collection("inventory").document(serial).delete().await()
-        Result.Success(Unit)
-    } catch (e: Exception) {
-        Result.Error(e)
-    }
-
-    override suspend fun getTransactionsForSerial(serial: String, limit: Int, startAfter: String?): Result<List<Transaction>> = try {
-        var query = db.collection("transactions")
-            .whereEqualTo("serial", serial)
-            .orderBy("date", Query.Direction.DESCENDING)
-            .limit(limit.toLong())
-        if (startAfter != null && startAfter.isNotBlank()) {
-            val snapshot = db.collection("transactions").document(startAfter).get().await()
-            query = query.startAfter(snapshot)
+    override suspend fun addOrUpdateItem(serial: String, item: InventoryItem): Result<Unit> = executeWithRetry {
+        try {
+            db.collection(Constants.COLLECTION_INVENTORY).document(serial).set(item).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e)
         }
-        val result = query.get().await()
-        val txs = result.documents.mapNotNull { it.toObject<Transaction>() }
-        Result.Success(txs)
-    } catch (e: Exception) {
-        Result.Error(e)
+    }
+
+    override suspend fun deleteItem(serial: String): Result<Unit> = executeWithRetry {
+        try {
+            db.collection(Constants.COLLECTION_INVENTORY).document(serial).delete().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
+    override suspend fun getTransactionsForSerial(serial: String, limit: Int, startAfter: String?): Result<List<Transaction>> = executeWithRetry {
+        try {
+            var query = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                .whereEqualTo("serial", serial)
+                .orderBy("date", Query.Direction.DESCENDING)
+                .limit(limit.toLong())
+                
+            if (startAfter != null && startAfter.isNotBlank()) {
+                // Fixed: Use proper document ID for pagination
+                val snapshot = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                    .document(startAfter)
+                    .get()
+                    .await()
+                    
+                if (snapshot.exists()) {
+                    query = query.startAfter(snapshot)
+                }
+            }
+            
+            val result = query.get().await()
+            val txs = result.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject<Transaction>()?.copy(id = doc.id) // Ensure ID is set
+                } catch (e: Exception) {
+                    null // Skip corrupted documents
+                }
+            }
+            Result.Success(txs)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
     }
 
     override suspend fun addTransaction(serial: String, transaction: Transaction): Result<Unit> = try {
