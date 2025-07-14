@@ -20,13 +20,22 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(navController: NavController, authRepo: AuthRepository) {
     LaunchedEffect(Unit) {
-        delay(2000) // Show splash for 2 seconds
+        delay(Constants.SPLASH_SCREEN_DELAY) // Show splash for configured time
         
-        if (authRepo.isLoggedIn()) {
-            navController.navigate("inventory") {
-                popUpTo("splash") { inclusive = true }
+        try {
+            // Check authentication status with null safety
+            val currentUser = authRepo.getCurrentUser()
+            if (currentUser != null && authRepo.isLoggedIn()) {
+                navController.navigate("inventory") {
+                    popUpTo("splash") { inclusive = true }
+                }
+            } else {
+                navController.navigate("login") {
+                    popUpTo("splash") { inclusive = true }
+                }
             }
-        } else {
+        } catch (e: Exception) {
+            // If there's any authentication error, navigate to login
             navController.navigate("login") {
                 popUpTo("splash") { inclusive = true }
             }
