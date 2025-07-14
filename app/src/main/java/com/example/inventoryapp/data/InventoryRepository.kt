@@ -243,28 +243,40 @@ class FirebaseInventoryRepository(
     // --- Validation helpers ---
 
     override suspend fun serialExists(serial: String): Boolean {
-        val doc = db.collection("inventory").document(serial).get().await()
-        return doc.exists()
+        return try {
+            val doc = db.collection(Constants.COLLECTION_INVENTORY).document(serial).get().await()
+            doc.exists()
+        } catch (e: Exception) {
+            false
+        }
     }
 
     override suspend fun wasSoldPreviously(serial: String): Boolean {
-        val txSnapshot = db.collection("transactions")
-            .whereEqualTo("serial", serial)
-            .whereIn("type", listOf("Sale", "Sell"))
-            .limit(1)
-            .get()
-            .await()
-        return !txSnapshot.isEmpty
+        return try {
+            val txSnapshot = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                .whereEqualTo("serial", serial)
+                .whereIn("type", listOf(Constants.TRANSACTION_TYPE_SALE, "Sell"))
+                .limit(1)
+                .get()
+                .await()
+            !txSnapshot.isEmpty
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // --- New helper for transaction forms/screens ---
     override suspend fun wasSerialSold(serial: String): Boolean {
-        val txSnapshot = db.collection("transactions")
-            .whereEqualTo("serial", serial)
-            .whereEqualTo("type", "Sale")
-            .limit(1)
-            .get()
-            .await()
-        return !txSnapshot.isEmpty
+        return try {
+            val txSnapshot = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                .whereEqualTo("serial", serial)
+                .whereEqualTo("type", Constants.TRANSACTION_TYPE_SALE)
+                .limit(1)
+                .get()
+                .await()
+            !txSnapshot.isEmpty
+        } catch (e: Exception) {
+            false
+        }
     }
 }
