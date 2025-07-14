@@ -384,7 +384,12 @@ fun TransactionScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    val transactionTypes = listOf("Sale", "Purchase", "Return", "Repair")
+                    val transactionTypes = listOf(
+                        Constants.TRANSACTION_TYPE_SALE,
+                        Constants.TRANSACTION_TYPE_PURCHASE,
+                        Constants.TRANSACTION_TYPE_RETURN,
+                        Constants.TRANSACTION_TYPE_REPAIR
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
