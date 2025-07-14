@@ -78,13 +78,13 @@ fun InventoryScreen(
     var offsetY by remember { mutableStateOf(0f) }
     var downloading by remember { mutableStateOf(false) }
 
-    // Auto-refresh every 30 seconds but only update UI if changed
+    // Auto-refresh every configured interval but only update UI if changed
     var lastInventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
     LaunchedEffect(inventory) { lastInventory = inventory }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30_000)
-            val result = inventoryRepo.getAllItems(limit = 100)
+            delay(Constants.AUTO_REFRESH_INTERVAL)
+            val result = inventoryRepo.getAllItems(limit = Constants.DEFAULT_INVENTORY_LIMIT)
             if (result is com.example.inventoryapp.data.Result.Success && result.data != lastInventory) {
                 viewModel.loadInventory()
             }
