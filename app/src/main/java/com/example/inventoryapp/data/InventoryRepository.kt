@@ -144,26 +144,44 @@ class FirebaseInventoryRepository(
         }
     }
 
-    override suspend fun addTransaction(serial: String, transaction: Transaction): Result<Unit> = try {
-        db.collection("transactions").add(transaction).await()
-        Result.Success(Unit)
-    } catch (e: Exception) {
-        Result.Error(e)
+    override suspend fun addTransaction(serial: String, transaction: Transaction): Result<Unit> = executeWithRetry {
+        try {
+            db.collection(Constants.COLLECTION_TRANSACTIONS).add(transaction).await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
     }
 
-    override suspend fun getAllTransactions(limit: Int, startAfter: String?): Result<List<Transaction>> = try {
-        var query = db.collection("transactions")
-            .orderBy("date", Query.Direction.DESCENDING)
-            .limit(limit.toLong())
-        if (startAfter != null && startAfter.isNotBlank()) {
-            val snapshot = db.collection("transactions").document(startAfter).get().await()
-            query = query.startAfter(snapshot)
+    override suspend fun getAllTransactions(limit: Int, startAfter: String?): Result<List<Transaction>> = executeWithRetry {
+        try {
+            var query = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                .orderBy("date", Query.Direction.DESCENDING)
+                .limit(limit.toLong())
+                
+            if (startAfter != null && startAfter.isNotBlank()) {
+                val snapshot = db.collection(Constants.COLLECTION_TRANSACTIONS)
+                    .document(startAfter)
+                    .get()
+                    .await()
+                    
+                if (snapshot.exists()) {
+                    query = query.startAfter(snapshot)
+                }
+            }
+            
+            val result = query.get().await()
+            val txs = result.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject<Transaction>()?.copy(id = doc.id)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            Result.Success(txs)
+        } catch (e: Exception) {
+            Result.Error(e)
         }
-        val result = query.get().await()
-        val txs = result.documents.mapNotNull { it.toObject<Transaction>() }
-        Result.Success(txs)
-    } catch (e: Exception) {
-        Result.Error(e)
     }
 
     override suspend fun addBatchTransactions(transactions: List<Transaction>): Result<Unit> = try {
