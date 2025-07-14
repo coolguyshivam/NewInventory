@@ -60,7 +60,7 @@ fun TransactionScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var selectedTransactionType by remember { mutableStateOf(prefillType ?: "Sale") }
+    var selectedTransactionType by remember { mutableStateOf(prefillType ?: Constants.TRANSACTION_TYPE_SALE) }
     var loading by remember { mutableStateOf(false) }
     var serialNumber by remember { mutableStateOf(prefillSerial ?: "") }
     var modelName by remember { mutableStateOf(prefillModel ?: "") }
