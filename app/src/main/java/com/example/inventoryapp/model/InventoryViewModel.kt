@@ -193,18 +193,24 @@ class InventoryViewModel(
         loadInventoryWithFilters()
     }
 
-    fun loadTransactionHistory(serial: String, paginate: Boolean = false, limit: Int = 20) {
+    fun loadTransactionHistory(serial: String, paginate: Boolean = false, limit: Int = Constants.DEFAULT_TRANSACTION_LIMIT) {
         viewModelScope.launch(Dispatchers.IO) {
-            val result = repo.getTransactionsForSerial(serial, limit = limit, startAfter = if (paginate) lastTransactionId else null)
-            if (result is Result.Success) {
-                if (paginate) {
-                    _transactionHistory.postValue((_transactionHistory.value ?: emptyList()) + result.data)
-                } else {
-                    _transactionHistory.postValue(result.data)
+            transactionMutex.withLock {
+                try {
+                    val result = repo.getTransactionsForSerial(serial, limit = limit, startAfter = if (paginate) lastTransactionId else null)
+                    if (result is Result.Success) {
+                        if (paginate) {
+                            _transactionHistory.postValue((_transactionHistory.value ?: emptyList()) + result.data)
+                        } else {
+                            _transactionHistory.postValue(result.data)
+                        }
+                        lastTransactionId = result.data.lastOrNull()?.id // Fixed: Use transaction ID instead of serial
+                    } else {
+                        _transactionHistory.postValue(emptyList())
+                    }
+                } catch (e: Exception) {
+                    _transactionHistory.postValue(emptyList())
                 }
-                lastTransactionId = result.data.lastOrNull()?.serial
-            } else {
-                _transactionHistory.postValue(emptyList())
             }
         }
     }
