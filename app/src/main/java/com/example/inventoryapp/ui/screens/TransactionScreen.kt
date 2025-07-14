@@ -504,8 +504,8 @@ fun TransactionScreen(
                     OutlinedTextField(
                         value = aadhaarNumber,
                         onValueChange = {
-                            if (it.length <= 12 && it.all { char -> char.isDigit() }) {
-                                aadhaarNumber = it
+                            if (it.length <= Constants.AADHAAR_NUMBER_LENGTH && it.all { char -> char.isDigit() }) {
+                                aadhaarNumber = ValidationUtils.sanitizeInput(it)
                                 aadhaarError = null
                             }
                         },
