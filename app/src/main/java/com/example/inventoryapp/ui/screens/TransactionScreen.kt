@@ -70,7 +70,7 @@ fun TransactionScreen(
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var transactionDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
+    var transactionDate by remember { mutableStateOf(SimpleDateFormat(Constants.DATE_FORMAT, Locale.getDefault()).format(Date())) }
     var datePickerDialogOpen by remember { mutableStateOf(false) }
 
     // Error states
