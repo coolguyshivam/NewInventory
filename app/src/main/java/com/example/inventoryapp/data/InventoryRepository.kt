@@ -11,12 +11,12 @@ import kotlinx.coroutines.tasks.await
 
 // --- Interface ---
 interface InventoryRepository {
-    suspend fun getAllItems(limit: Int = 20, startAfter: String? = null): Result<List<InventoryItem>>
+    suspend fun getAllItems(limit: Int = Constants.DEFAULT_PAGINATION_LIMIT, startAfter: String? = null): Result<List<InventoryItem>>
     suspend fun addOrUpdateItem(serial: String, item: InventoryItem): Result<Unit>
     suspend fun deleteItem(serial: String): Result<Unit>
-    suspend fun getTransactionsForSerial(serial: String, limit: Int = 20, startAfter: String? = null): Result<List<Transaction>>
+    suspend fun getTransactionsForSerial(serial: String, limit: Int = Constants.DEFAULT_PAGINATION_LIMIT, startAfter: String? = null): Result<List<Transaction>>
     suspend fun addTransaction(serial: String, transaction: Transaction): Result<Unit>
-    suspend fun getAllTransactions(limit: Int = 20, startAfter: String? = null): Result<List<Transaction>>
+    suspend fun getAllTransactions(limit: Int = Constants.DEFAULT_PAGINATION_LIMIT, startAfter: String? = null): Result<List<Transaction>>
     suspend fun addBatchTransactions(transactions: List<Transaction>): Result<Unit>
     suspend fun addBatchInventory(items: List<InventoryItem>): Result<Unit>
     suspend fun getItemBySerial(serial: String): InventoryItem?
