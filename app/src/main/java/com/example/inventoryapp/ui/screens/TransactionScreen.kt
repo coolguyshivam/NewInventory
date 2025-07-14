@@ -454,7 +454,7 @@ fun TransactionScreen(
                         onValueChange = {},
                         label = { Text("Model Name") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = selectedTransactionType == "Purchase",
+                        enabled = selectedTransactionType == Constants.TRANSACTION_TYPE_PURCHASE,
                         isError = modelError != null,
                         supportingText = modelError?.let { { Text(it) } }
                     )
