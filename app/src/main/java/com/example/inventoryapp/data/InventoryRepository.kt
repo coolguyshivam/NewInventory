@@ -35,17 +35,62 @@ class FirebaseInventoryRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : InventoryRepository {
 
-    override suspend fun getAllItems(limit: Int, startAfter: String?): Result<List<InventoryItem>> = try {
-        var query = db.collection("inventory").orderBy("serial").limit(limit.toLong())
-        if (startAfter != null && startAfter.isNotBlank()) {
-            val snapshot = db.collection("inventory").document(startAfter).get().await()
-            query = query.startAfter(snapshot)
+    private suspend fun <T> executeWithRetry(
+        maxRetries: Int = 3,
+        delayBetweenRetries: Long = 1000L,
+        operation: suspend () -> Result<T>
+    ): Result<T> {
+        repeat(maxRetries) { attempt ->
+            try {
+                val result = operation()
+                if (result is Result.Success) {
+                    return result
+                }
+                // If it's an error and not the last attempt, continue to retry
+                if (attempt < maxRetries - 1) {
+                    delay(delayBetweenRetries * (attempt + 1)) // Exponential backoff
+                }
+            } catch (e: Exception) {
+                if (attempt < maxRetries - 1) {
+                    delay(delayBetweenRetries * (attempt + 1))
+                } else {
+                    return Result.Error(e)
+                }
+            }
         }
-        val result = query.get().await()
-        val items = result.documents.mapNotNull { it.toObject<InventoryItem>() }
-        Result.Success(items)
-    } catch (e: Exception) {
-        Result.Error(e)
+        return Result.Error(Exception("Max retries exceeded"))
+    }
+
+    override suspend fun getAllItems(limit: Int, startAfter: String?): Result<List<InventoryItem>> = executeWithRetry {
+        try {
+            var query = db.collection(Constants.COLLECTION_INVENTORY)
+                .orderBy("serial")
+                .limit(limit.toLong())
+                
+            if (startAfter != null && startAfter.isNotBlank()) {
+                // Fixed: Use proper document reference for pagination
+                val snapshot = db.collection(Constants.COLLECTION_INVENTORY)
+                    .document(startAfter)
+                    .get()
+                    .await()
+                    
+                if (snapshot.exists()) {
+                    query = query.startAfter(snapshot)
+                }
+            }
+            
+            val result = query.get().await()
+            val items = result.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject<InventoryItem>()
+                } catch (e: Exception) {
+                    null // Skip corrupted documents
+                }
+            }
+            Result.Success(items)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
     }
 
     override suspend fun addOrUpdateItem(serial: String, item: InventoryItem): Result<Unit> = try {
