@@ -51,6 +51,10 @@ class InventoryViewModel(
     // Pagination state
     private var lastInventorySerial: String? = null
     private var lastTransactionId: String? = null
+    
+    // Thread safety for concurrent operations
+    private val inventoryMutex = Mutex()
+    private val transactionMutex = Mutex()
 
     init {
         loadInventory()
