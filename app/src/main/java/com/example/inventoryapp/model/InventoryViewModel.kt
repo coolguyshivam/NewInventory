@@ -121,45 +121,61 @@ class InventoryViewModel(
     }
 
     private fun loadInventoryWithFilters() {
-        _loading.value = true
-        _error.value = null
         viewModelScope.launch(Dispatchers.IO) {
-            val result = repo.getAllItems(limit = 500)
-            when (result) {
-                is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
-                    removedItems.forEach { item ->
-                        repo.deleteItem(item.serial)
-                    }
-                    val filters = _filters.value ?: InventoryFilters()
-                    val search = _searchQuery.value
-                    val sort = _sortBy.value
+            inventoryMutex.withLock {
+                _loading.postValue(true)
+                _error.postValue(null)
+                
+                try {
+                    val result = repo.getAllItems(limit = Constants.MAX_MODELS_LIMIT)
+                    when (result) {
+                        is Result.Success -> {
+                            // Process data on background thread
+                            val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
+                            val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
+                            
+                            // Delete invalid items asynchronously
+                            removedItems.forEach { item ->
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    repo.deleteItem(item.serial)
+                                }
+                            }
+                            
+                            val filters = _filters.value ?: InventoryFilters()
+                            val search = _searchQuery.value
+                            val sort = _sortBy.value
 
-                    val filtered = validItems.filter { item ->
-                        (filters.serial.isNullOrBlank() || item.serial.contains(filters.serial!!, ignoreCase = true)) &&
-                        (filters.model.isNullOrBlank() || item.model.contains(filters.model!!, ignoreCase = true)) &&
-                        (search.isBlank() ||
-                            (item.name.contains(search, true)
-                             || item.serial.contains(search, true)
-                             || item.model.contains(search, true)
-                            )
-                        )
+                            // Apply filters efficiently
+                            val filtered = validItems.filter { item ->
+                                (filters.serial.isNullOrBlank() || item.serial.contains(filters.serial!!, ignoreCase = true)) &&
+                                (filters.model.isNullOrBlank() || item.model.contains(filters.model!!, ignoreCase = true)) &&
+                                (search.isBlank() ||
+                                    (item.name.contains(search, true)
+                                     || item.serial.contains(search, true)
+                                     || item.model.contains(search, true)
+                                    )
+                                )
+                            }
+                            
+                            // Sort efficiently
+                            val sorted = when (sort) {
+                                "Date" -> filtered.sortedByDescending { it.timestamp }
+                                "Name" -> filtered.sortedBy { it.name }
+                                "Serial" -> filtered.sortedBy { it.serial }
+                                else -> filtered
+                            }
+                            _inventory.postValue(sorted)
+                        }
+                        is Result.Error -> {
+                            _error.postValue(result.exception?.message ?: Constants.ERROR_ITEM_NOT_FOUND)
+                        }
                     }
-                    val sorted = when (sort) {
-                        "Date" -> filtered.sortedByDescending { it.timestamp }
-                        "Name" -> filtered.sortedBy { it.name }
-                        "Serial" -> filtered.sortedBy { it.serial }
-                        else -> filtered
-                    }
-                    _inventory.postValue(sorted)
-                }
-                is Result.Error -> {
-                    _error.postValue(result.exception?.message ?: "Error loading inventory")
+                } catch (e: Exception) {
+                    _error.postValue(e.message ?: Constants.ERROR_NETWORK_UNAVAILABLE)
+                } finally {
+                    _loading.postValue(false)
                 }
             }
-            _loading.postValue(false)
         }
     }
 
