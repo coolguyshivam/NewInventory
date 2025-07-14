@@ -251,72 +251,80 @@ fun CameraPreview(
     var camera: Camera? by remember { mutableStateOf(null) }
 
     DisposableEffect(torchEnabled) {
-        val cameraProvider = cameraProviderFuture.get()
-
-        val preview = Preview.Builder()
-            .setTargetResolution(Size(1280, 720))
-            .build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-
-        val barcodeScanner = BarcodeScanning.getClient()
-        val analysisUseCase = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720))
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-
-        analysisUseCase.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
-            val mediaImage = imageProxy.image
-            if (mediaImage != null) {
-                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                barcodeScanner.process(image)
-                    .addOnSuccessListener { barcodes ->
-                        // Filter for strict IMEI (15 digits) or serials (6-20 alphanumeric)
-                        val validCode = barcodes.firstOrNull { barcode ->
-                            val code = barcode.rawValue
-                            when {
-                                // Strict IMEI: exactly 15 digits
-                                code?.matches(Regex("^\\d{15,17}$")) == true -> true
-                                // Serial number: alphanumeric, 6-20 characters
-                                code?.matches(Regex("^[A-Za-z0-9]{6,20}$")) == true -> true
-                                else -> false
-                            }
-                        }?.rawValue
-                        if (validCode != null) {
-                            onBarcodeScanned(validCode)
-                        }
-                    }
-                    .addOnFailureListener { e ->
-                        onError(e.message ?: "Barcode scan failed")
-                    }
-                    .addOnCompleteListener {
-                        imageProxy.close()
-                    }
-            } else {
-                imageProxy.close()
-            }
-        }
-
-        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
         try {
+            val cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder()
+                .setTargetResolution(Size(1280, 720))
+                .build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+            val barcodeScanner = BarcodeScanning.getClient()
+            val analysisUseCase = ImageAnalysis.Builder()
+                .setTargetResolution(Size(1280, 720))
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+
+            analysisUseCase.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
+                val mediaImage = imageProxy.image
+                if (mediaImage != null) {
+                    val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                    barcodeScanner.process(image)
+                        .addOnSuccessListener { barcodes ->
+                            // Filter for strict IMEI (15 digits) or serials (6-20 alphanumeric)
+                            val validCode = barcodes.firstOrNull { barcode ->
+                                val code = barcode.rawValue
+                                when {
+                                    // Strict IMEI: exactly 15 digits
+                                    code?.matches(Regex("^\\d{15,17}$")) == true -> true
+                                    // Serial number: alphanumeric, 6-20 characters
+                                    code?.matches(Regex("^[A-Za-z0-9]{6,20}$")) == true -> true
+                                    else -> false
+                                }
+                            }?.rawValue
+                            if (validCode != null) {
+                                onBarcodeScanned(validCode)
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            onError(e.message ?: Constants.ERROR_INVALID_INPUT)
+                        }
+                        .addOnCompleteListener {
+                            imageProxy.close()
+                        }
+                } else {
+                    imageProxy.close()
+                }
+            }
+
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
             cameraProvider.unbindAll()
             camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner, cameraSelector, preview, analysisUseCase
             )
             camera?.cameraControl?.enableTorch(torchEnabled)
         } catch (e: Exception) {
-            onError(e.message ?: "Camera initialization failed")
+            onError(e.message ?: Constants.ERROR_PERMISSION_DENIED)
         }
 
         onDispose {
-            cameraProvider.unbindAll()
+            try {
+                cameraProviderFuture.get().unbindAll()
+            } catch (e: Exception) {
+                // Ignore disposal errors
+            }
         }
     }
 
     // React to torch state changes
     LaunchedEffect(torchEnabled) {
-        camera?.cameraControl?.enableTorch(torchEnabled)
+        try {
+            camera?.cameraControl?.enableTorch(torchEnabled)
+        } catch (e: Exception) {
+            // Torch not available, ignore
+        }
     }
 
     AndroidView(
