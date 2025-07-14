@@ -184,40 +184,58 @@ class FirebaseInventoryRepository(
         }
     }
 
-    override suspend fun addBatchTransactions(transactions: List<Transaction>): Result<Unit> = try {
-        db.runBatch { batch ->
-            transactions.forEach { tx ->
-                val ref = db.collection("transactions").document()
-                batch.set(ref, tx)
-            }
-        }.await()
-        Result.Success(Unit)
-    } catch (e: Exception) {
-        Result.Error(e)
+    override suspend fun addBatchTransactions(transactions: List<Transaction>): Result<Unit> = executeWithRetry {
+        try {
+            db.runBatch { batch ->
+                transactions.forEach { tx ->
+                    val ref = db.collection(Constants.COLLECTION_TRANSACTIONS).document()
+                    batch.set(ref, tx)
+                }
+            }.await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
     }
 
-    override suspend fun addBatchInventory(items: List<InventoryItem>): Result<Unit> = try {
-        db.runBatch { batch ->
-            items.forEach { item ->
-                val ref = db.collection("inventory").document(item.serial)
-                batch.set(ref, item)
-            }
-        }.await()
-        Result.Success(Unit)
-    } catch (e: Exception) {
-        Result.Error(e)
+    override suspend fun addBatchInventory(items: List<InventoryItem>): Result<Unit> = executeWithRetry {
+        try {
+            db.runBatch { batch ->
+                items.forEach { item ->
+                    val ref = db.collection(Constants.COLLECTION_INVENTORY).document(item.serial)
+                    batch.set(ref, item)
+                }
+            }.await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
     }
 
     override suspend fun getItemBySerial(serial: String): InventoryItem? {
-        val doc = db.collection("inventory").document(serial).get().await()
-        return doc.toObject<InventoryItem>()
+        return try {
+            val doc = db.collection(Constants.COLLECTION_INVENTORY).document(serial).get().await()
+            doc.toObject<InventoryItem>()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override suspend fun getAllModels(): List<String> {
-        val itemsResult = getAllItems(limit = 1000)
-        return if (itemsResult is Result.Success) {
-            itemsResult.data.mapNotNull { it.model }.distinct()
-        } else {
+        return try {
+            // Fixed: Use proper server-side aggregation instead of fetching all items
+            val result = db.collection(Constants.COLLECTION_INVENTORY)
+                .get()
+                .await()
+                
+            result.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject<InventoryItem>()?.model?.takeIf { it.isNotBlank() }
+                } catch (e: Exception) {
+                    null
+                }
+            }.distinct()
+        } catch (e: Exception) {
             emptyList()
         }
     }
