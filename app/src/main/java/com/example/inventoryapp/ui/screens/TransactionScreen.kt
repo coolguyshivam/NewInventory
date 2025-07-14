@@ -489,8 +489,8 @@ fun TransactionScreen(
                     OutlinedTextField(
                         value = phoneNumber,
                         onValueChange = {
-                            if (it.length <= 10 && it.all { char -> char.isDigit() }) {
-                                phoneNumber = it
+                            if (it.length <= Constants.PHONE_NUMBER_LENGTH && it.all { char -> char.isDigit() }) {
+                                phoneNumber = ValidationUtils.sanitizeInput(it)
                                 phoneError = null
                             }
                         },
