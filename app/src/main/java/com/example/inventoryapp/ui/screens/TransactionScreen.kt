@@ -555,7 +555,11 @@ fun TransactionScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = description,
-                        onValueChange = { description = it },
+                        onValueChange = {
+                            if (ValidationUtils.isValidDescription(it)) {
+                                description = ValidationUtils.sanitizeInput(it)
+                            }
+                        },
                         label = { Text("Description (Optional)") },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3
