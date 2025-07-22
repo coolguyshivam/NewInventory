@@ -117,7 +117,7 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    // --- Image Picker Logic (Separated into a helper for maintainability) ---
+    // Fix: Lambdas only set state, snackbars shown in LaunchedEffect
     val onGalleryDenied: (String) -> Unit = { reason ->
         galleryDeniedReason = reason
     }
@@ -151,7 +151,6 @@ fun TransactionForm(
             onImageCaptured = onImageCaptured
         )
     }
-    // --- End of Picker logic ---
 
     // Show permission/image errors in Composable context
     galleryDeniedReason?.let { reason ->
