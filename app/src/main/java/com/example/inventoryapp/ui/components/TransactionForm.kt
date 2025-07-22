@@ -117,7 +117,7 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    // Fix: Lambdas only set state, snackbars shown in LaunchedEffect
+    // Lambdas only set state, snackbars shown in LaunchedEffect below
     val onGalleryDenied: (String) -> Unit = { reason ->
         galleryDeniedReason = reason
     }
@@ -152,20 +152,23 @@ fun TransactionForm(
         )
     }
 
-    // Show permission/image errors in Composable context
-    galleryDeniedReason?.let { reason ->
-        LaunchedEffect(reason) {
-            snackbarHostState.showSnackbar(reason)
+    // Show permission/image errors in Composable context (reset after showing)
+    if (galleryDeniedReason != null) {
+        LaunchedEffect(galleryDeniedReason) {
+            snackbarHostState.showSnackbar(galleryDeniedReason!!)
+            galleryDeniedReason = null
         }
     }
-    cameraDeniedReason?.let { reason ->
-        LaunchedEffect(reason) {
-            snackbarHostState.showSnackbar(reason)
+    if (cameraDeniedReason != null) {
+        LaunchedEffect(cameraDeniedReason) {
+            snackbarHostState.showSnackbar(cameraDeniedReason!!)
+            cameraDeniedReason = null
         }
     }
-    imageLimitError?.let { reason ->
-        LaunchedEffect(reason) {
-            snackbarHostState.showSnackbar(reason)
+    if (imageLimitError != null) {
+        LaunchedEffect(imageLimitError) {
+            snackbarHostState.showSnackbar(imageLimitError!!)
+            imageLimitError = null
         }
     }
 
