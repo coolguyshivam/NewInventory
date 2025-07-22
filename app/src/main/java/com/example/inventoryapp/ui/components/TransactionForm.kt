@@ -45,6 +45,7 @@ import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
+import com.example.inventoryapp.utils.ImageUtils
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -116,67 +117,42 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    // Gallery picker launcher
-    val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-        uris?.let {
-            if (images.size + it.size > maxImages) {
-                imageLimitError = "You can select up to $maxImages images per transaction."
-            } else {
-                images = images + it.take(maxImages - images.size)
-                imageLimitError = null
+    // --- Image Picker Logic (Separated into a helper for maintainability) ---
+
+    val imagePickerHandler = remember {
+        ImagePickerHandler(
+            context = context,
+            maxImages = maxImages,
+            onGalleryDenied = { reason ->
+                galleryDeniedReason = reason
+                coroutineScope.launch { snackbarHostState.showSnackbar(reason) }
+            },
+            onCameraDenied = { reason ->
+                cameraDeniedReason = reason
+                coroutineScope.launch { snackbarHostState.showSnackbar(reason) }
+            },
+            onImagesSelected = { uris ->
+                if (images.size + uris.size > maxImages) {
+                    imageLimitError = "You can select up to $maxImages images per transaction."
+                    coroutineScope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+                } else {
+                    images = images + uris.take(maxImages - images.size)
+                    imageLimitError = null
+                }
+            },
+            onImageCaptured = { uri ->
+                if (images.size < maxImages) {
+                    images = images + uri
+                    imageLimitError = null
+                } else {
+                    imageLimitError = "You can select up to $maxImages images per transaction."
+                    coroutineScope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+                }
             }
-        }
-    }
-    val galleryPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            galleryDeniedReason = null
-            imgPicker.launch(androidx.activity.result.PickVisualMediaRequest())
-        } else {
-            galleryDeniedReason = "Gallery access denied. Please enable permission in the app settings."
-            coroutineScope.launch { snackbarHostState.showSnackbar(galleryDeniedReason!!) }
-        }
+        )
     }
 
-    // Camera launcher/permission
-    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && cameraImageUri != null) {
-            if (images.size < maxImages) {
-                images = images + cameraImageUri!!
-                imageLimitError = null
-            } else {
-                imageLimitError = "You can select up to $maxImages images per transaction."
-            }
-        }
-    }
-    fun createCameraImageUri(): Uri {
-        val imagesDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-        val imageFile = java.io.File.createTempFile(
-            "transaction_photo_${System.currentTimeMillis()}",
-            ".jpg",
-            imagesDir
-        )
-        return androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            imageFile
-        )
-    }
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            cameraDeniedReason = null
-            val uri = createCameraImageUri()
-            cameraImageUri = uri
-            cameraLauncher.launch(uri)
-        } else {
-            cameraDeniedReason = "Camera access denied. Please enable permission in the app settings."
-            coroutineScope.launch { snackbarHostState.showSnackbar(cameraDeniedReason!!) }
-        }
-    }
+    // --- End of Picker logic ---
 
     LaunchedEffect(serial, type) {
         if (serial.isNotBlank() && type != "Purchase") {
@@ -508,16 +484,7 @@ fun TransactionForm(
                         leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
                         modifier = Modifier.clickable {
                             imageSourceSheetOpen = false
-                            val permission = Manifest.permission.CAMERA
-                            val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
-                            if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-                                cameraDeniedReason = null
-                                val uri = createCameraImageUri()
-                                cameraImageUri = uri
-                                cameraLauncher.launch(uri)
-                            } else {
-                                cameraPermissionLauncher.launch(permission)
-                            }
+                            imagePickerHandler.launchCamera()
                         }
                     )
                     ListItem(
@@ -525,14 +492,7 @@ fun TransactionForm(
                         leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
                         modifier = Modifier.clickable {
                             imageSourceSheetOpen = false
-                            val permission = Manifest.permission.READ_MEDIA_IMAGES
-                            val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
-                            if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-                                galleryDeniedReason = null
-                                imgPicker.launch(androidx.activity.result.PickVisualMediaRequest())
-                            } else {
-                                galleryPermissionLauncher.launch(permission)
-                            }
+                            imagePickerHandler.launchGallery()
                         }
                     )
                 }
@@ -629,7 +589,11 @@ fun TransactionForm(
                             val imageUrls = mutableListOf<String>()
                             if (images.isNotEmpty()) {
                                 val storage = FirebaseStorage.getInstance().reference
-                                for ((index, uri) in images.withIndex()) {
+                                // Compress and upload in background
+                                val compressedUris = images.map { uri ->
+                                    ImageUtils.compressImageIfNeeded(context, uri)
+                                }
+                                for ((index, uri) in compressedUris.withIndex()) {
                                     val ref = storage.child("transactions/${serial}_${System.currentTimeMillis()}_${index}.jpg")
                                     ref.putFile(uri).await()
                                     imageUrls += ref.downloadUrl.await().toString()
@@ -779,4 +743,85 @@ fun TransactionForm(
             }
         }
     }
+}
+
+/**
+ * Helper picker logic, separated for modularity and testability.
+ */
+@Composable
+fun ImagePickerHandler(
+    context: android.content.Context,
+    maxImages: Int,
+    onGalleryDenied: (String) -> Unit,
+    onCameraDenied: (String) -> Unit,
+    onImagesSelected: (List<Uri>) -> Unit,
+    onImageCaptured: (Uri) -> Unit
+): ImagePickerHandler {
+    val coroutineScope = rememberCoroutineScope()
+
+    var galleryPermissionResult by remember { mutableStateOf(false) }
+    var cameraPermissionResult by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Gallery
+    val galleryPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        if (uris != null && uris.isNotEmpty()) {
+            onImagesSelected(uris)
+        }
+    }
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        galleryPermissionResult = granted
+        if (granted) {
+            galleryPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest())
+        } else {
+            onGalleryDenied("Gallery access denied. Please enable permission in the app settings.")
+        }
+    }
+
+    // Camera
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraImageUri != null) {
+            onImageCaptured(cameraImageUri!!)
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        cameraPermissionResult = granted
+        if (granted) {
+            val uri = ImageUtils.createCameraImageUri(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            onCameraDenied("Camera access denied. Please enable permission in the app settings.")
+        }
+    }
+
+    return remember {
+        object : ImagePickerHandler {
+            override fun launchGallery() {
+                val permission = Manifest.permission.READ_MEDIA_IMAGES
+                val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
+                if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
+                    galleryPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest())
+                } else {
+                    galleryPermissionLauncher.launch(permission)
+                }
+            }
+            override fun launchCamera() {
+                val permission = Manifest.permission.CAMERA
+                val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
+                if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
+                    val uri = ImageUtils.createCameraImageUri(context)
+                    cameraImageUri = uri
+                    cameraLauncher.launch(uri)
+                } else {
+                    cameraPermissionLauncher.launch(permission)
+                }
+            }
+        }
+    }
+}
+
+interface ImagePickerHandler {
+    fun launchGallery()
+    fun launchCamera()
 }

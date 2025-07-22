@@ -33,6 +33,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
+import com.example.inventoryapp.utils.ImageUtils
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -73,20 +74,50 @@ fun TransactionPage(
     var amountError by remember { mutableStateOf<String?>(null) }
     var quantityError by remember { mutableStateOf<String?>(null) }
 
-    // Image picker
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
+    // Image picker setup
+    val maxImages = 10
+    var imageSourceSheetOpen by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    var galleryDeniedReason by remember { mutableStateOf<String?>(null) }
+    var cameraDeniedReason by remember { mutableStateOf<String?>(null) }
+    var imageLimitError by remember { mutableStateOf<String?>(null) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
-        selectedImages = uris
-    }
-    
-    // Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            // Handle camera capture success
+        uris?.let {
+            if (selectedImages.size + it.size > maxImages) {
+                imageLimitError = "You can select up to $maxImages images."
+                scope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+            } else {
+                selectedImages = selectedImages + it.take(maxImages - selectedImages.size)
+                imageLimitError = null
+            }
         }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            if (selectedImages.size < maxImages) {
+                selectedImages = selectedImages + cameraImageUri!!
+                imageLimitError = null
+            } else {
+                imageLimitError = "You can select up to $maxImages images."
+                scope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+            }
+        }
+    }
+
+    fun launchGallery() {
+        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    fun launchCamera() {
+        val uri = ImageUtils.createCameraImageUri(context)
+        cameraImageUri = uri
+        cameraLauncher.launch(uri)
     }
 
     // Transaction types
@@ -393,40 +424,75 @@ fun TransactionPage(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        "Attach Images (Max 5)",
+                        "Attach Images (Max $maxImages)",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    OutlinedButton(
+                        onClick = { imageSourceSheetOpen = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = selectedImages.size < maxImages
                     ) {
-                        OutlinedButton(
-                            onClick = { 
-                                imagePickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = selectedImages.size < 5
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add Images")
+                        Spacer(Modifier.width(8.dp))
+                        Text("${selectedImages.size}/$maxImages", color = Color.Gray)
+                    }
+
+                    // Modal sheet for selecting source
+                    if (imageSourceSheetOpen) {
+                        ModalBottomSheet(
+                            onDismissRequest = { imageSourceSheetOpen = false },
+                            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                         ) {
-                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Gallery")
-                        }
-                        
-                        OutlinedButton(
-                            onClick = { /* Handle camera capture */ },
-                            modifier = Modifier.weight(1f),
-                            enabled = selectedImages.size < 5
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Camera")
+                            ListItem(
+                                headlineContent = { Text("Take Photo") },
+                                leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
+                                modifier = Modifier.clickable {
+                                    imageSourceSheetOpen = false
+                                    if (selectedImages.size < maxImages) {
+                                        launchCamera()
+                                    } else {
+                                        imageLimitError = "You can select up to $maxImages images."
+                                        scope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+                                    }
+                                }
+                            )
+                            ListItem(
+                                headlineContent = { Text("Choose from Gallery") },
+                                leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+                                modifier = Modifier.clickable {
+                                    imageSourceSheetOpen = false
+                                    if (selectedImages.size < maxImages) {
+                                        launchGallery()
+                                    } else {
+                                        imageLimitError = "You can select up to $maxImages images."
+                                        scope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
+                                    }
+                                }
+                            )
                         }
                     }
-                    
+
+                    // Show permission/image errors
+                    galleryDeniedReason?.let { reason ->
+                        LaunchedEffect(reason) {
+                            snackbarHostState.showSnackbar(reason)
+                        }
+                    }
+                    cameraDeniedReason?.let { reason ->
+                        LaunchedEffect(reason) {
+                            snackbarHostState.showSnackbar(reason)
+                        }
+                    }
+                    imageLimitError?.let { reason ->
+                        LaunchedEffect(reason) {
+                            snackbarHostState.showSnackbar(reason)
+                        }
+                    }
+
                     // Display selected images
                     if (selectedImages.isNotEmpty()) {
                         LazyRow(
