@@ -118,41 +118,57 @@ fun TransactionForm(
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
     // --- Image Picker Logic (Separated into a helper for maintainability) ---
+    val onGalleryDenied: (String) -> Unit = { reason ->
+        galleryDeniedReason = reason
+    }
+    val onCameraDenied: (String) -> Unit = { reason ->
+        cameraDeniedReason = reason
+    }
+    val onImagesSelected: (List<Uri>) -> Unit = { uris ->
+        if (images.size + uris.size > maxImages) {
+            imageLimitError = "You can select up to $maxImages images per transaction."
+        } else {
+            images = images + uris.take(maxImages - images.size)
+            imageLimitError = null
+        }
+    }
+    val onImageCaptured: (Uri) -> Unit = { uri ->
+        if (images.size < maxImages) {
+            images = images + uri
+            imageLimitError = null
+        } else {
+            imageLimitError = "You can select up to $maxImages images per transaction."
+        }
+    }
 
     val imagePickerHandler = remember {
         ImagePickerHandler(
             context = context,
             maxImages = maxImages,
-            onGalleryDenied = { reason ->
-                galleryDeniedReason = reason
-                coroutineScope.launch { snackbarHostState.showSnackbar(reason) }
-            },
-            onCameraDenied = { reason ->
-                cameraDeniedReason = reason
-                coroutineScope.launch { snackbarHostState.showSnackbar(reason) }
-            },
-            onImagesSelected = { uris ->
-                if (images.size + uris.size > maxImages) {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                    coroutineScope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
-                } else {
-                    images = images + uris.take(maxImages - images.size)
-                    imageLimitError = null
-                }
-            },
-            onImageCaptured = { uri ->
-                if (images.size < maxImages) {
-                    images = images + uri
-                    imageLimitError = null
-                } else {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                    coroutineScope.launch { snackbarHostState.showSnackbar(imageLimitError!!) }
-                }
-            }
+            onGalleryDenied = onGalleryDenied,
+            onCameraDenied = onCameraDenied,
+            onImagesSelected = onImagesSelected,
+            onImageCaptured = onImageCaptured
         )
     }
-
     // --- End of Picker logic ---
+
+    // Show permission/image errors in Composable context
+    galleryDeniedReason?.let { reason ->
+        LaunchedEffect(reason) {
+            snackbarHostState.showSnackbar(reason)
+        }
+    }
+    cameraDeniedReason?.let { reason ->
+        LaunchedEffect(reason) {
+            snackbarHostState.showSnackbar(reason)
+        }
+    }
+    imageLimitError?.let { reason ->
+        LaunchedEffect(reason) {
+            snackbarHostState.showSnackbar(reason)
+        }
+    }
 
     LaunchedEffect(serial, type) {
         if (serial.isNotBlank() && type != "Purchase") {
@@ -498,23 +514,6 @@ fun TransactionForm(
                 }
             }
 
-            // Show permission/image errors
-            galleryDeniedReason?.let { reason ->
-                LaunchedEffect(reason) {
-                    snackbarHostState.showSnackbar(reason)
-                }
-            }
-            cameraDeniedReason?.let { reason ->
-                LaunchedEffect(reason) {
-                    snackbarHostState.showSnackbar(reason)
-                }
-            }
-            imageLimitError?.let { reason ->
-                LaunchedEffect(reason) {
-                    snackbarHostState.showSnackbar(reason)
-                }
-            }
-
             // Image thumbnails
             if (images.isNotEmpty()) {
                 Column(Modifier.padding(top = 6.dp, bottom = 6.dp)) {
@@ -757,8 +756,6 @@ fun ImagePickerHandler(
     onImagesSelected: (List<Uri>) -> Unit,
     onImageCaptured: (Uri) -> Unit
 ): ImagePickerHandler {
-    val coroutineScope = rememberCoroutineScope()
-
     var galleryPermissionResult by remember { mutableStateOf(false) }
     var cameraPermissionResult by remember { mutableStateOf(false) }
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
