@@ -141,16 +141,15 @@ fun TransactionForm(
         }
     }
 
-    val imagePickerHandler = remember {
-        ImagePickerHandler(
-            context = context,
-            maxImages = maxImages,
-            onGalleryDenied = onGalleryDenied,
-            onCameraDenied = onCameraDenied,
-            onImagesSelected = onImagesSelected,
-            onImageCaptured = onImageCaptured
-        )
-    }
+    // FIX: Call composable directly, do not wrap with remember
+    val imagePickerHandler = ImagePickerHandler(
+        context = context,
+        maxImages = maxImages,
+        onGalleryDenied = onGalleryDenied,
+        onCameraDenied = onCameraDenied,
+        onImagesSelected = onImagesSelected,
+        onImageCaptured = onImageCaptured
+    )
 
     // Show permission/image errors in Composable context (reset after showing)
     if (galleryDeniedReason != null) {
