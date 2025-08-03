@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.window.Dialog
+import androidx.compose.animation.AnimatedVisibility // <-- FIX: Import added
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -202,7 +203,7 @@ fun InventoryScreen(
                 )
             }
 
-            if (showPhotoViewer && photoViewerImages.isNotEmpty()) {
+            AnimatedVisibility(visible = showPhotoViewer && photoViewerImages.isNotEmpty()) {
                 Dialog(onDismissRequest = { showPhotoViewer = false }) {
                     Box(
                         Modifier

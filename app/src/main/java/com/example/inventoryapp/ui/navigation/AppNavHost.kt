@@ -21,6 +21,7 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.model.InventoryViewModel
 import com.example.inventoryapp.ui.screens.*
+import com.example.inventoryapp.ui.screens.BarcodeScannerScreen
 
 sealed class MainScreen(val route: String, val label: String, val icon: ImageVector) {
     object Inventory : MainScreen("inventory", "Inventory", Icons.AutoMirrored.Filled.List)

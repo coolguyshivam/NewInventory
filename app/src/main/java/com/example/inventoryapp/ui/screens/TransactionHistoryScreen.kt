@@ -37,6 +37,7 @@ import com.example.inventoryapp.ui.components.TransactionHistoryCard
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.animation.AnimatedVisibility // <-- FIXED: Import added
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -443,7 +444,7 @@ fun TransactionHistoryScreen(
                                         CircularProgressIndicator(modifier = Modifier.size(18.dp))
                                     } else {
                                         Icon(
-                                            imageVector = if (relatedDetailsExpanded) 
+                                            imageVector = if (relatedDetailsExpanded)
                                                 androidx.compose.material.icons.Icons.Filled.FilterList
                                             else androidx.compose.material.icons.Icons.Filled.Search,
                                             contentDescription = "Expand",
