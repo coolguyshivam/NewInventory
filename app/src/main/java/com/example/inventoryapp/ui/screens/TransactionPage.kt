@@ -35,6 +35,8 @@ import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.utils.ImageUtils
 import kotlinx.coroutines.launch
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,23 +51,25 @@ fun TransactionPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     // States
     var selectedTransactionType by remember { mutableStateOf(transactionType.ifBlank { "Sale" }) }
     var item by remember { mutableStateOf<InventoryItem?>(null) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    
+    var uploading by remember { mutableStateOf(false) }
+
     // Form fields
     var serialNumber by remember { mutableStateOf(serial ?: "") }
     var customerName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var aadhaarNumber by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
+    // Quantity field always 1 and disabled
     var quantity by remember { mutableStateOf("1") }
     var description by remember { mutableStateOf("") }
     var selectedImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    
+
     // Field errors
     var serialError by remember { mutableStateOf<String?>(null) }
     var customerNameError by remember { mutableStateOf<String?>(null) }
@@ -138,16 +142,26 @@ fun TransactionPage(
         }
     }
 
+    // Block navigation with a dialog while uploading
+    if (uploading) {
+        AlertDialog(
+            onDismissRequest = { /* Block dismiss */ },
+            confirmButton = {},
+            title = { Text("Please Wait") },
+            text = { Text("Data Uploading") }
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
+                title = {
                     Text(
                         "New Transaction",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
-                    ) 
+                    )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -188,11 +202,11 @@ fun TransactionPage(
                             FilterChip(
                                 selected = selectedTransactionType == type,
                                 onClick = { selectedTransactionType = type },
-                                label = { 
+                                label = {
                                     Text(
                                         type,
                                         fontWeight = if (selectedTransactionType == type) FontWeight.Bold else FontWeight.Normal
-                                    ) 
+                                    )
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -232,10 +246,10 @@ fun TransactionPage(
                             )
                         }
                     }
-                    
+
                     OutlinedTextField(
                         value = serialNumber,
-                        onValueChange = { 
+                        onValueChange = {
                             serialNumber = it
                             serialError = null
                         },
@@ -245,7 +259,7 @@ fun TransactionPage(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    
+
                     // Display item info if found
                     AnimatedVisibility(visible = item != null) {
                         item?.let { foundItem ->
@@ -270,7 +284,7 @@ fun TransactionPage(
                             }
                         }
                     }
-                    
+
                     // Display error if item not found
                     AnimatedVisibility(visible = error != null) {
                         Card(
@@ -289,7 +303,7 @@ fun TransactionPage(
                 }
             }
 
-            // Customer Information Section  
+            // Customer Information Section
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -302,10 +316,10 @@ fun TransactionPage(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    
+
                     OutlinedTextField(
                         value = customerName,
-                        onValueChange = { 
+                        onValueChange = {
                             customerName = it
                             customerNameError = null
                         },
@@ -316,10 +330,10 @@ fun TransactionPage(
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                     )
-                    
+
                     OutlinedTextField(
                         value = phoneNumber,
-                        onValueChange = { 
+                        onValueChange = {
                             if (it.length <= 10 && it.all { char -> char.isDigit() }) {
                                 phoneNumber = it
                                 phoneError = null
@@ -333,10 +347,10 @@ fun TransactionPage(
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) }
                     )
-                    
+
                     OutlinedTextField(
                         value = aadhaarNumber,
-                        onValueChange = { 
+                        onValueChange = {
                             if (it.length <= 12 && it.all { char -> char.isDigit() }) {
                                 aadhaarNumber = it
                                 aadhaarError = null
@@ -366,14 +380,14 @@ fun TransactionPage(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    
+
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
                             value = amount,
-                            onValueChange = { 
+                            onValueChange = {
                                 amount = it
                                 amountError = null
                             },
@@ -385,24 +399,21 @@ fun TransactionPage(
                             shape = RoundedCornerShape(12.dp),
                             leadingIcon = { Icon(Icons.Default.CurrencyRupee, contentDescription = null) }
                         )
-                        
+
+                        // Quantity field always 1 and disabled
                         OutlinedTextField(
-                            value = quantity,
-                            onValueChange = { 
-                                if (it.all { char -> char.isDigit() }) {
-                                    quantity = it
-                                    quantityError = null
-                                }
-                            },
+                            value = "1",
+                            onValueChange = {},
                             label = { Text("Quantity *") },
-                            supportingText = quantityError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                            isError = quantityError != null,
+                            supportingText = null,
+                            isError = false,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = false
                         )
                     }
-                    
+
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -428,7 +439,7 @@ fun TransactionPage(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    
+
                     OutlinedButton(
                         onClick = { imageSourceSheetOpen = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -441,11 +452,12 @@ fun TransactionPage(
                         Text("${selectedImages.size}/$maxImages", color = Color.Gray)
                     }
 
-                    // Modal sheet for selecting source
+                    // Modal sheet for selecting source, moved up using bottom padding
                     if (imageSourceSheetOpen) {
                         ModalBottomSheet(
                             onDismissRequest = { imageSourceSheetOpen = false },
-                            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                            modifier = Modifier.padding(bottom = 32.dp)
                         ) {
                             ListItem(
                                 headlineContent = { Text("Take Photo") },
@@ -537,7 +549,7 @@ fun TransactionPage(
                 onClick = {
                     // Validate and submit
                     var hasErrors = false
-                    
+
                     if (serialNumber.isBlank()) {
                         serialError = "Serial number is required"
                         hasErrors = true
@@ -558,23 +570,61 @@ fun TransactionPage(
                         amountError = "Enter valid amount"
                         hasErrors = true
                     }
-                    if (quantity.isBlank() || quantity.toIntOrNull() == null || quantity.toInt() <= 0) {
-                        quantityError = "Enter valid quantity"
-                        hasErrors = true
-                    }
-                    
+
                     if (!hasErrors) {
-                        // TODO: Submit transaction
+                        uploading = true
                         scope.launch {
-                            snackbarHostState.showSnackbar("Transaction submitted successfully!")
+                            val imageUrls = mutableListOf<String>()
+                            if (selectedImages.isNotEmpty()) {
+                                val storage = FirebaseStorage.getInstance().reference
+                                val compressedUris = selectedImages.map { uri ->
+                                    ImageUtils.compressImageIfNeeded(context, uri)
+                                }
+                                for ((index, uri) in compressedUris.withIndex()) {
+                                    val ref = storage.child("transactions/${serialNumber}_${System.currentTimeMillis()}_${index}.jpg")
+                                    ref.putFile(uri).await()
+                                    imageUrls += ref.downloadUrl.await().toString()
+                                }
+                            }
+                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val parsedDate: Long = try {
+                                sdf.parse(
+                                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                                )?.time ?: System.currentTimeMillis()
+                            } catch (e: Exception) {
+                                System.currentTimeMillis()
+                            }
+
+                            val transaction = Transaction(
+                                serial = serialNumber,
+                                model = item?.model ?: "",
+                                phone = phoneNumber,
+                                aadhaar = aadhaarNumber,
+                                amount = amount.toDoubleOrNull() ?: 0.0,
+                                description = description,
+                                date = sdf.format(Date()),
+                                quantity = 1,
+                                imageUrls = imageUrls,
+                                type = selectedTransactionType,
+                                timestamp = System.currentTimeMillis()
+                            )
+
+                            val result = inventoryRepo.addTransaction(serialNumber, transaction)
+                            uploading = false
+                            if (result is com.example.inventoryapp.data.Result.Success) {
+                                snackbarHostState.showSnackbar("Transaction submitted successfully!")
+                                // Optionally clear fields here
+                            } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                snackbarHostState.showSnackbar(result.exception?.message ?: "Error saving transaction.")
+                            }
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                enabled = !loading
+                enabled = !loading && !uploading
             ) {
-                if (loading) {
+                if (loading || uploading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         color = MaterialTheme.colorScheme.onPrimary

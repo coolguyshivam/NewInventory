@@ -98,6 +98,9 @@ fun InventoryScreen(
     val scannedSerial = scannedSerialState?.value
     LaunchedEffect(scannedSerial) {
         scannedSerial?.let { serial ->
+            // Automatically populate the filter/search field with scanned barcode
+            filterText = serial
+            viewModel.searchInventory(serial)
             viewModel.updateSerialFilter(serial)
             navController.currentBackStackEntry?.savedStateHandle?.remove<String>("scannedSerial")
         }

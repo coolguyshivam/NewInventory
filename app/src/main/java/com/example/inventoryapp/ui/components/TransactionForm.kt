@@ -81,9 +81,11 @@ fun TransactionForm(
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
+    // Quantity field always disabled and set to "1"
     var quantity by remember { mutableStateOf("1") }
     var images by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var uploading by remember { mutableStateOf(false) }
 
     var serialError by remember { mutableStateOf<String?>(null) }
     var modelError by remember { mutableStateOf<String?>(null) }
@@ -117,41 +119,29 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    // Lambdas only set state, snackbars shown in LaunchedEffect below
-    val onGalleryDenied: (String) -> Unit = { reason ->
-        galleryDeniedReason = reason
-    }
-    val onCameraDenied: (String) -> Unit = { reason ->
-        cameraDeniedReason = reason
-    }
-    val onImagesSelected: (List<Uri>) -> Unit = { uris ->
-        if (images.size + uris.size > maxImages) {
-            imageLimitError = "You can select up to $maxImages images per transaction."
-        } else {
-            images = images + uris.take(maxImages - images.size)
-            imageLimitError = null
-        }
-    }
-    val onImageCaptured: (Uri) -> Unit = { uri ->
-        if (images.size < maxImages) {
-            images = images + uri
-            imageLimitError = null
-        } else {
-            imageLimitError = "You can select up to $maxImages images per transaction."
-        }
-    }
-
-    // FIX: Call composable directly, do not wrap with remember
     val imagePickerHandler = ImagePickerHandler(
         context = context,
         maxImages = maxImages,
-        onGalleryDenied = onGalleryDenied,
-        onCameraDenied = onCameraDenied,
-        onImagesSelected = onImagesSelected,
-        onImageCaptured = onImageCaptured
+        onGalleryDenied = { galleryDeniedReason = it },
+        onCameraDenied = { cameraDeniedReason = it },
+        onImagesSelected = { uris ->
+            if (images.size + uris.size > maxImages) {
+                imageLimitError = "You can select up to $maxImages images per transaction."
+            } else {
+                images = images + uris.take(maxImages - images.size)
+                imageLimitError = null
+            }
+        },
+        onImageCaptured = { uri ->
+            if (images.size < maxImages) {
+                images = images + uri
+                imageLimitError = null
+            } else {
+                imageLimitError = "You can select up to $maxImages images per transaction."
+            }
+        }
     )
 
-    // Show permission/image errors in Composable context (reset after showing)
     if (galleryDeniedReason != null) {
         LaunchedEffect(galleryDeniedReason) {
             snackbarHostState.showSnackbar(galleryDeniedReason!!)
@@ -211,6 +201,17 @@ fun TransactionForm(
     fun formatPhone(input: String) = input.filter { it.isDigit() }.take(10)
     fun formatAadhaar(input: String) = input.filter { it.isDigit() }.take(12)
     val canEdit = userRole == UserRole.ADMIN || userRole == UserRole.STAFF
+
+    // Prevent navigation while uploading
+    if (uploading) {
+        // Block UI with a dialog and prevent back navigation
+        AlertDialog(
+            onDismissRequest = { /* Block dismiss */ },
+            confirmButton = {},
+            title = { Text("Please Wait") },
+            text = { Text("Data Uploading") }
+        )
+    }
 
     Box(
         modifier = modifier
@@ -298,7 +299,7 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onNext = { modelFocus.requestFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
             serialError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
@@ -314,7 +315,7 @@ fun TransactionForm(
                     .fillMaxWidth()
                     .focusRequester(modelFocus),
                 singleLine = true,
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 isError = modelError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
@@ -366,7 +367,7 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onNext = { aadhaarFocus.requestFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
 
@@ -385,7 +386,7 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onNext = { amountFocus.requestFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
 
@@ -409,7 +410,7 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onNext = { descriptionFocus.requestFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
             amountError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
@@ -427,7 +428,7 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onNext = { quantityFocus.requestFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
 
@@ -436,7 +437,7 @@ fun TransactionForm(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color(0xFFEAF1FB)
@@ -447,18 +448,16 @@ fun TransactionForm(
                 Text(if (date.isBlank()) "Pick Date" else date, color = MaterialTheme.colorScheme.primary)
             }
 
+            // Quantity field: always 1 and disabled
             OutlinedTextField(
-                value = quantity,
-                onValueChange = {
-                    quantity = it.filter { ch -> ch.isDigit() }
-                    quantityError = null
-                },
+                value = "1",
+                onValueChange = {},
                 label = { Text("Quantity") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(quantityFocus),
                 singleLine = true,
-                isError = quantityError != null,
+                isError = false,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done
@@ -466,18 +465,17 @@ fun TransactionForm(
                 keyboardActions = KeyboardActions(
                     onDone = { focusManager.clearFocus() }
                 ),
-                enabled = canEdit && !loading,
+                enabled = false,
                 shape = RoundedCornerShape(16.dp)
             )
-            quantityError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
+            // No error message for quantity since it's always valid
 
             Spacer(Modifier.height(10.dp))
 
-            // Merged image source picker button
             OutlinedButton(
                 onClick = { imageSourceSheetOpen = true },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = images.size < maxImages && canEdit && !loading,
+                enabled = images.size < maxImages && canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color(0xFFFAF8F4)
@@ -490,11 +488,12 @@ fun TransactionForm(
                 Text("${images.size}/$maxImages", color = Color.Gray)
             }
 
-            // Modal sheet for selecting source
+            // Modal sheet for selecting source, moved up using bottom padding
             if (imageSourceSheetOpen) {
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
-                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                    modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     ListItem(
                         headlineContent = { Text("Take Photo") },
@@ -533,7 +532,7 @@ fun TransactionForm(
                                     .size(58.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFF3F3F3))
-                                    .clickable(enabled = canEdit && !loading) {
+                                    .clickable(enabled = canEdit && !loading && !uploading) {
                                         images = images - uri
                                     }
                             )
@@ -568,14 +567,6 @@ fun TransactionForm(
                         amountError = "Enter a valid positive number"
                         valid = false
                     }
-                    val quantityInt = quantity.toIntOrNull()
-                    if ("quantity" in requiredFields && quantity.isBlank()) {
-                        quantityError = "Quantity is required"
-                        valid = false
-                    } else if (quantityInt == null || quantityInt <= 0) {
-                        quantityError = "Enter a valid positive number"
-                        valid = false
-                    }
                     if ("date" in requiredFields && date.isBlank()) {
                         coroutineScope.launch { snackbarHostState.showSnackbar("Date is required") }
                         valid = false
@@ -583,6 +574,7 @@ fun TransactionForm(
                     if (!valid) return@Button
 
                     loading = true
+                    uploading = true
 
                     coroutineScope.launch {
                         try {
@@ -615,7 +607,7 @@ fun TransactionForm(
                                 amount = amountDouble ?: 0.0,
                                 description = description,
                                 date = date,
-                                quantity = quantityInt ?: 1,
+                                quantity = 1, // Always 1
                                 imageUrls = imageUrls,
                                 type = type,
                                 timestamp = System.currentTimeMillis()
@@ -623,23 +615,26 @@ fun TransactionForm(
 
                             val item = inventoryRepo.getItemBySerial(serial)
                             val wasSold = inventoryRepo.wasSerialSold(serial)
-                            val isInRepair = inventoryRepo.isSerialInRepair(serial) // <-- Implement this in your repo!
+                            val isInRepair = inventoryRepo.isSerialInRepair(serial)
 
                             // Business rules
-                            if (type == "Sale" && (item == null || item.quantity < (quantityInt ?: 1))) {
+                            if (type == "Sale" && (item == null || item.quantity < 1)) {
                                 snackbarHostState.showSnackbar("Cannot sell: item not in inventory or insufficient stock.")
                                 loading = false
+                                uploading = false
                                 return@launch
                             }
                             if (type == "Purchase" && item != null) {
                                 snackbarHostState.showSnackbar("Cannot purchase: serial already exists in inventory.")
                                 loading = false
+                                uploading = false
                                 return@launch
                             }
                             if (type == "Repair") {
                                 if (item == null) {
                                     snackbarHostState.showSnackbar("Cannot repair: serial not in inventory.")
                                     loading = false
+                                    uploading = false
                                     return@launch
                                 }
                                 // Remove item from inventory (moves to 'in repair')
@@ -649,6 +644,7 @@ fun TransactionForm(
                                 if (!wasSold && !isInRepair) {
                                     snackbarHostState.showSnackbar("Cannot return: item not sold or in repair.")
                                     loading = false
+                                    uploading = false
                                     return@launch
                                 }
                                 // If returning from repair, add back to inventory
@@ -657,7 +653,7 @@ fun TransactionForm(
                                         serial = serial,
                                         name = model,
                                         model = model,
-                                        quantity = quantityInt ?: 1,
+                                        quantity = 1,
                                         phone = phone,
                                         aadhaar = aadhaar,
                                         description = description,
@@ -677,7 +673,7 @@ fun TransactionForm(
                                         serial = serial,
                                         name = model,
                                         model = model,
-                                        quantity = quantityInt ?: 1,
+                                        quantity = 1,
                                         phone = phone,
                                         aadhaar = aadhaar,
                                         description = description,
@@ -688,12 +684,13 @@ fun TransactionForm(
                                     inventoryRepo.addOrUpdateItem(serial, newItem)
                                 }
                                 if (type == "Sale" && item != null) {
-                                    val updatedQty = item.quantity - (quantityInt ?: 1)
+                                    val updatedQty = item.quantity - 1
                                     val updatedItem = item.copy(quantity = updatedQty.coerceAtLeast(0))
                                     inventoryRepo.addOrUpdateItem(serial, updatedItem)
                                 }
 
                                 loading = false
+                                uploading = false
                                 showSuccess.value = true
                                 snackbarHostState.showSnackbar("Transaction saved successfully!")
                                 serial = ""
@@ -702,14 +699,15 @@ fun TransactionForm(
                                 aadhaar = ""
                                 amount = ""
                                 description = ""
-                                quantity = "1"
                                 images = emptyList()
                             } else if (result is Result.Error) {
                                 loading = false
+                                uploading = false
                                 snackbarHostState.showSnackbar(result.exception?.message ?: "Error saving transaction.")
                             }
                         } catch (e: Exception) {
                             loading = false
+                            uploading = false
                             snackbarHostState.showSnackbar(e.message ?: "Unknown error occurred")
                         }
                     }
@@ -718,12 +716,12 @@ fun TransactionForm(
                     .fillMaxWidth()
                     .height(50.dp)
                     .clip(RoundedCornerShape(28.dp)),
-                enabled = canEdit && !loading,
+                enabled = canEdit && !loading && !uploading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                if (loading) {
+                if (loading || uploading) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(18.dp)
@@ -743,83 +741,4 @@ fun TransactionForm(
             }
         }
     }
-}
-
-/**
- * Helper picker logic, separated for modularity and testability.
- */
-@Composable
-fun ImagePickerHandler(
-    context: android.content.Context,
-    maxImages: Int,
-    onGalleryDenied: (String) -> Unit,
-    onCameraDenied: (String) -> Unit,
-    onImagesSelected: (List<Uri>) -> Unit,
-    onImageCaptured: (Uri) -> Unit
-): ImagePickerHandler {
-    var galleryPermissionResult by remember { mutableStateOf(false) }
-    var cameraPermissionResult by remember { mutableStateOf(false) }
-    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Gallery
-    val galleryPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-        if (uris != null && uris.isNotEmpty()) {
-            onImagesSelected(uris)
-        }
-    }
-    val galleryPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        galleryPermissionResult = granted
-        if (granted) {
-            galleryPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest())
-        } else {
-            onGalleryDenied("Gallery access denied. Please enable permission in the app settings.")
-        }
-    }
-
-    // Camera
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && cameraImageUri != null) {
-            onImageCaptured(cameraImageUri!!)
-        }
-    }
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        cameraPermissionResult = granted
-        if (granted) {
-            val uri = ImageUtils.createCameraImageUri(context)
-            cameraImageUri = uri
-            cameraLauncher.launch(uri)
-        } else {
-            onCameraDenied("Camera access denied. Please enable permission in the app settings.")
-        }
-    }
-
-    return remember {
-        object : ImagePickerHandler {
-            override fun launchGallery() {
-                val permission = Manifest.permission.READ_MEDIA_IMAGES
-                val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
-                if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-                    galleryPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest())
-                } else {
-                    galleryPermissionLauncher.launch(permission)
-                }
-            }
-            override fun launchCamera() {
-                val permission = Manifest.permission.CAMERA
-                val permissionStatus = ContextCompat.checkSelfPermission(context, permission)
-                if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-                    val uri = ImageUtils.createCameraImageUri(context)
-                    cameraImageUri = uri
-                    cameraLauncher.launch(uri)
-                } else {
-                    cameraPermissionLauncher.launch(permission)
-                }
-            }
-        }
-    }
-}
-
-interface ImagePickerHandler {
-    fun launchGallery()
-    fun launchCamera()
 }
