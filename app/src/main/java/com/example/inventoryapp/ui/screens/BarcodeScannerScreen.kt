@@ -1,377 +1,351 @@
 package com.example.inventoryapp.ui.screens
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.view.ViewGroup
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import android.content.Context
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.*
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.util.Size
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavController
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
+import coil.compose.AsyncImage
+import com.example.inventoryapp.model.InventoryFilters
+import com.example.inventoryapp.model.InventoryItem
+import com.example.inventoryapp.model.InventoryViewModel
+import com.example.inventoryapp.model.UserRole
+import com.example.inventoryapp.utils.downloadImageToGallery
+import com.example.inventoryapp.ui.components.InventoryCard
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.window.Dialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BarcodeScannerScreen(navController: NavController) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    // Camera permission state
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        hasCameraPermission = granted
-    }
-
-    // Ensures permission launcher is only called once and not on every recomposition
-    LaunchedEffect(key1 = true) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    var scanResult by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var torchEnabled by remember { mutableStateOf(false) }
-
-    Box(
-        Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            !hasCameraPermission -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Camera,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Camera permission is required to scan barcodes.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
-                    }
-                }
-            }
-            else -> {
-                // Camera preview (only initialize after permission granted)
-                CameraPreview(
-                    onBarcodeScanned = { code ->
-                        if (scanResult == null) {
-                            scanResult = code
-                            navController.previousBackStackEntry?.savedStateHandle?.set("scannedSerial", code)
-                            navController.popBackStack()
-                        }
-                    },
-                    onError = { error = it },
-                    torchEnabled = torchEnabled,
-                    onTorchChanged = { torchEnabled = it },
-                    lifecycleOwner = lifecycleOwner
-                )
-
-                // Barcode scanning overlay
-                ScannerOverlay()
-
-                // Top instruction bar
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
-                ) {
-                    Text(
-                        text = "Align IMEI barcode (15 digits) or serial number within the frame",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                // Bottom controls
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { torchEnabled = !torchEnabled },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(if (torchEnabled) "Flash Off" else "Flash On")
-                        }
-                        Button(
-                            onClick = { navController.popBackStack() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                }
-
-                // Error message
-                error?.let {
-                    Card(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text(
-                            text = "Error: $it",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CameraPreview(
-    onBarcodeScanned: (String) -> Unit,
-    onError: (String) -> Unit,
-    torchEnabled: Boolean,
-    onTorchChanged: (Boolean) -> Unit,
-    lifecycleOwner: LifecycleOwner
+fun InventoryScreen(
+    navController: NavController,
+    viewModel: InventoryViewModel,
+    inventoryRepo: com.example.inventoryapp.data.InventoryRepository
 ) {
     val context = LocalContext.current
-    val previewView = remember { PreviewView(context) }
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var camera: Camera? by remember { mutableStateOf(null) }
+    var filterText by remember { mutableStateOf("") }
+    val inventory by viewModel.inventory.observeAsState(emptyList())
+    val loading by viewModel.loading.observeAsState(false)
+    val error by viewModel.error.observeAsState()
+    val filters by viewModel.filters.observeAsState(InventoryFilters())
+    val role = viewModel.userRole
+    val sortBy by viewModel.sortBy.collectAsState()
 
-    // Only bind camera in DisposableEffect if permission is granted
-    DisposableEffect(key1 = lifecycleOwner, key2 = torchEnabled) {
-        var analysisUseCase: ImageAnalysis? = null
-        var cameraBound = false
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    var selectedSerials by remember { mutableStateOf(setOf<String>()) }
+    val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
 
-        val cameraProvider = try {
-            cameraProviderFuture.get()
-        } catch (e: Exception) {
-            onError("Camera initialization failed: ${e.message}")
-            null
+    var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var filterDialogVisible by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var showPhotoViewer by remember { mutableStateOf(false) }
+    var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
+    var photoViewerStartIndex by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+
+    var zoom by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+    var downloading by remember { mutableStateOf(false) }
+
+    var lastInventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
+    LaunchedEffect(inventory) { lastInventory = inventory }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            val result = inventoryRepo.getAllItems(limit = 100)
+            if (result is com.example.inventoryapp.data.Result.Success && result.data != lastInventory) {
+                viewModel.loadInventory()
+            }
         }
+    }
 
-        if (cameraProvider != null) {
-            val preview = Preview.Builder()
-                .setTargetResolution(Size(1280, 720))
-                .build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
+    LaunchedEffect(inventory) {
+        inventory.forEach { item ->
+            if (item.quantity <= 0 || item.isSold || item.isInRepair) {
+                scope.launch { inventoryRepo.deleteItem(item.serial) }
+            }
+        }
+    }
+
+    val scannedSerialLive = navController.currentBackStackEntry?.savedStateHandle?.getLiveData<String>("scannedSerial")
+    val scannedSerialState = scannedSerialLive?.observeAsState()
+    val scannedSerial = scannedSerialState?.value
+    LaunchedEffect(scannedSerial) {
+        scannedSerial?.let { serial ->
+            // Automatically populate the filter/search field with scanned barcode
+            filterText = serial
+            viewModel.searchInventory(serial)
+            viewModel.updateSerialFilter(serial)
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("scannedSerial")
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+                .padding(paddingValues)
+        ) {
+            OutlinedTextField(
+                value = filterText,
+                onValueChange = {
+                    filterText = it
+                    viewModel.searchInventory(it)
+                },
+                placeholder = { Text("Search inventory...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    Row {
+                        IconButton(onClick = { filterDialogVisible = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                        }
+                        IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Barcode")
+                        }
+                        IconButton(onClick = { viewModel.loadInventory() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+
+            when {
+                loading == true -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-
-            val barcodeScanner = BarcodeScanning.getClient()
-            analysisUseCase = ImageAnalysis.Builder()
-                .setTargetResolution(Size(1280, 720))
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-
-            analysisUseCase.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
-                val mediaImage = imageProxy.image
-                if (mediaImage != null) {
-                    val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                    barcodeScanner.process(image)
-                        .addOnSuccessListener { barcodes ->
-                            // Filter for strict IMEI (15-17 digits) or serials (6-20 alphanumeric)
-                            val validCode = barcodes.firstOrNull { barcode ->
-                                val code = barcode.rawValue
-                                when {
-                                    // Strict IMEI: 15-17 digits (handle dual IMEI sometimes)
-                                    code?.matches(Regex("^\\d{15,17}$")) == true -> true
-                                    // Serial number: alphanumeric, 6-20 characters
-                                    code?.matches(Regex("^[A-Za-z0-9]{6,20}$")) == true -> true
-                                    else -> false
+                error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
+                }
+                inventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No inventory items found.")
+                }
+                else -> LazyColumn {
+                    itemsIndexed(inventory, key = { _, item -> item.serial }) { _, item ->
+                        InventoryCard(
+                            item = item,
+                            userRole = role,
+                            onClick = { selectedItem = item },
+                            onEdit = { /* implement if needed */ },
+                            onDelete = {
+                                scope.launch {
+                                    val result = inventoryRepo.deleteItem(item.serial)
+                                    if (result is com.example.inventoryapp.data.Result.Success) {
+                                        viewModel.loadInventory()
+                                        snackbarHostState.showSnackbar("Item deleted")
+                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                    }
                                 }
-                            }?.rawValue
-                            if (validCode != null) {
-                                onBarcodeScanned(validCode)
+                            },
+                            onAddTransaction = { /* implement if needed */ },
+                            onViewHistory = { /* implement if needed */ },
+                            onArchive = { /* archive not used */ },
+                            onSelectionChange = { checked: Boolean ->
+                                selectedSerials = if (checked) selectedSerials + item.serial else selectedSerials - item.serial
+                            },
+                            isSelected = selectedSerials.contains(item.serial),
+                            imageUrls = item.imageUrls,
+                            onImageClick = { imgIdx: Int ->
+                                photoViewerImages = item.imageUrls
+                                photoViewerStartIndex = imgIdx
+                                showPhotoViewer = true
+                                zoom = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (selectedItem != null) {
+                AlertDialog(
+                    onDismissRequest = { selectedItem = null },
+                    title = { Text(selectedItem?.name ?: "Item Details") },
+                    text = { Text("Model: ${selectedItem?.model}\nSerial: ${selectedItem?.serial}\nQuantity: ${selectedItem?.quantity}\nDescription: ${selectedItem?.description}") },
+                    confirmButton = {
+                        Button(onClick = { selectedItem = null }) { Text("Close") }
+                    }
+                )
+            }
+
+            if (showPhotoViewer && photoViewerImages.isNotEmpty()) {
+                Dialog(onDismissRequest = { showPhotoViewer = false }) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(350.dp)
+                            .background(Color.Black)
+                            .pointerInput(Unit) {
+                                detectTransformGestures { _, pan, zoomChange, _ ->
+                                    zoom = (zoom * zoomChange).coerceIn(1f, 4f)
+                                    offsetX += pan.x
+                                    offsetY += pan.y
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = photoViewerImages.getOrNull(photoViewerStartIndex),
+                            contentDescription = "Inventory Image",
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth()
+                                .graphicsLayer(
+                                    scaleX = zoom,
+                                    scaleY = zoom,
+                                    translationX = offsetX,
+                                    translationY = offsetY
+                                ),
+                        )
+
+                        Row(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(16.dp)
+                        ) {
+                            photoViewerImages.forEachIndexed { idx, _ ->
+                                Box(
+                                    Modifier
+                                        .size(12.dp)
+                                        .background(if (photoViewerStartIndex == idx) Color.White else Color.Gray, CircleShape)
+                                        .clickable { photoViewerStartIndex = idx }
+                                )
+                                Spacer(Modifier.width(8.dp))
                             }
                         }
-                        .addOnFailureListener { e ->
-                            onError(e.message ?: "Barcode scan failed")
+                        IconButton(
+                            onClick = {
+                                downloading = true
+                                val url = photoViewerImages.getOrNull(photoViewerStartIndex)
+                                url?.let {
+                                    scope.launch {
+                                        downloadImageToGallery(
+                                            context = context,
+                                            url = it,
+                                            fileName = "inventory_image_${System.currentTimeMillis()}.jpg",
+                                            onDownloadComplete = {
+                                                downloading = false
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Image downloaded to gallery!")
+                                                }
+                                            },
+                                            onDownloadError = { errorMsg ->
+                                                downloading = false
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("Failed to download image: $errorMsg")
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                            enabled = !downloading
+                        ) {
+                            if (downloading) CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                            else Icon(Icons.Default.Download, contentDescription = "Download", tint = Color.White)
                         }
-                        .addOnCompleteListener {
-                            imageProxy.close()
+                        IconButton(
+                            onClick = { showPhotoViewer = false },
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Photo, contentDescription = "Close", tint = Color.White)
                         }
-                } else {
-                    imageProxy.close()
+                    }
                 }
             }
 
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                camera = cameraProvider.bindToLifecycle(
-                    lifecycleOwner, cameraSelector, preview, analysisUseCase
+            if (filterDialogVisible) {
+                AlertDialog(
+                    onDismissRequest = { filterDialogVisible = false },
+                    title = { Text("Filter Inventory", style = MaterialTheme.typography.headlineSmall) },
+                    text = {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            OutlinedTextField(
+                                value = filters.serial ?: "",
+                                onValueChange = { viewModel.setFilters(filters.copy(serial = it)) },
+                                label = { Text("Serial Number") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = filters.model ?: "",
+                                onValueChange = { viewModel.setFilters(filters.copy(model = it)) },
+                                label = { Text("Model") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = filters.quantity?.toString() ?: "",
+                                onValueChange = { value: String ->
+                                    val q = value.toIntOrNull()
+                                    viewModel.setFilters(filters.copy(quantity = q))
+                                },
+                                label = { Text("Quantity") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = filters.date ?: "",
+                                onValueChange = { viewModel.setFilters(filters.copy(date = it)) },
+                                label = { Text("Date (yyyy-MM-dd)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
+                                onClick = {
+                                    viewModel.setFilters(InventoryFilters())
+                                    filterDialogVisible = false
+                                }
+                            ) { Text("Clear") }
+                            Button(
+                                onClick = { filterDialogVisible = false },
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("Apply") }
+                        }
+                    }
                 )
-                camera?.cameraControl?.enableTorch(torchEnabled)
-                cameraBound = true
-            } catch (e: Exception) {
-                onError(e.message ?: "Camera initialization failed")
             }
         }
-
-        onDispose {
-            try {
-                analysisUseCase?.clearAnalyzer()
-                cameraProvider?.unbindAll()
-            } catch (_: Exception) {}
-        }
-    }
-
-    // React to torch state changes
-    LaunchedEffect(torchEnabled) {
-        camera?.cameraControl?.enableTorch(torchEnabled)
-    }
-
-    AndroidView(
-        factory = {
-            previewView.apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
-}
-
-@Composable
-fun ScannerOverlay() {
-    Canvas(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        val canvasWidth = size.width
-        val canvasHeight = size.height
-        val scannerSize = minOf(canvasWidth, canvasHeight) * 0.6f
-        val left = (canvasWidth - scannerSize) / 2
-        val top = (canvasHeight - scannerSize) / 2
-        val right = left + scannerSize
-        val bottom = top + scannerSize
-
-        // Darken the area outside the scanner frame
-        drawRect(
-            color = Color.Black.copy(alpha = 0.6f),
-            size = size
-        )
-
-        // Create a clear rectangle in the center (for visual effect, not a real transparent hole)
-        drawRect(
-            color = Color.Transparent,
-            topLeft = androidx.compose.ui.geometry.Offset(left, top),
-            size = androidx.compose.ui.geometry.Size(scannerSize, scannerSize)
-        )
-
-        // Draw corner indicators
-        val cornerLength = 30f
-        val cornerStroke = 4f
-        val cornerColor = Color.White
-
-        // Top-left corner
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(left, top),
-            end = androidx.compose.ui.geometry.Offset(left + cornerLength, top),
-            strokeWidth = cornerStroke
-        )
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(left, top),
-            end = androidx.compose.ui.geometry.Offset(left, top + cornerLength),
-            strokeWidth = cornerStroke
-        )
-
-        // Top-right corner
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(right, top),
-            end = androidx.compose.ui.geometry.Offset(right - cornerLength, top),
-            strokeWidth = cornerStroke
-        )
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(right, top),
-            end = androidx.compose.ui.geometry.Offset(right, top + cornerLength),
-            strokeWidth = cornerStroke
-        )
-
-        // Bottom-left corner
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(left, bottom),
-            end = androidx.compose.ui.geometry.Offset(left + cornerLength, bottom),
-            strokeWidth = cornerStroke
-        )
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(left, bottom),
-            end = androidx.compose.ui.geometry.Offset(left, bottom - cornerLength),
-            strokeWidth = cornerStroke
-        )
-
-        // Bottom-right corner
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(right, bottom),
-            end = androidx.compose.ui.geometry.Offset(right - cornerLength, bottom),
-            strokeWidth = cornerStroke
-        )
-        drawLine(
-            color = cornerColor,
-            start = androidx.compose.ui.geometry.Offset(right, bottom),
-            end = androidx.compose.ui.geometry.Offset(right, bottom - cornerLength),
-            strokeWidth = cornerStroke
-        )
     }
 }

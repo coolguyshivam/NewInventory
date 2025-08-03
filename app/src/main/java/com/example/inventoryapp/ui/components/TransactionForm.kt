@@ -3,6 +3,7 @@ package com.example.inventoryapp.ui.components
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -317,7 +318,7 @@ fun TransactionForm(
             )
             modelError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
 
-            AnimatedVisibility(modelSuggestions.isNotEmpty()) {
+            AnimatedVisibility(visible = modelSuggestions.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
