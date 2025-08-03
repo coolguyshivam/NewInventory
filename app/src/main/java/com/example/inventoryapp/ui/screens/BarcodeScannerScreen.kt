@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.window.Dialog
-import androidx.compose.animation.AnimatedVisibility // <-- FIX: Import added
+import androidx.compose.animation.AnimatedVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +99,6 @@ fun InventoryScreen(
     val scannedSerial = scannedSerialState?.value
     LaunchedEffect(scannedSerial) {
         scannedSerial?.let { serial ->
-            // Automatically populate the filter/search field with scanned barcode
             filterText = serial
             viewModel.searchInventory(serial)
             viewModel.updateSerialFilter(serial)
