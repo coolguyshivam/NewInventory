@@ -76,6 +76,11 @@ fun TransactionHistoryScreen(
     var offsetY by remember { mutableStateOf(0f) }
     var downloading by remember { mutableStateOf(false) }
 
+    // --- ADDED: Related transactions state ---
+    var relatedTransactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
+    var relatedDetailsExpanded by remember { mutableStateOf(false) }
+    var loadingRelatedDetails by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         val result = inventoryRepo.getAllTransactions()
         if (result is Result.Success) {
@@ -209,6 +214,17 @@ fun TransactionHistoryScreen(
                                 offsetX = 0f
                                 offsetY = 0f
                                 showImageViewer = false
+                                // --- ADDED: fetch related details when opening ---
+                                relatedDetailsExpanded = false
+                                loadingRelatedDetails = true
+                                relatedTransactions = emptyList()
+                                scope.launch {
+                                    val relatedResult = inventoryRepo.getTransactionsForSerial(tx.serial)
+                                    relatedTransactions = if (relatedResult is Result.Success) {
+                                        relatedResult.data.sortedByDescending { it.timestamp }
+                                    } else emptyList()
+                                    loadingRelatedDetails = false
+                                }
                             },
                             backgroundColor = when (tx.type.lowercase()) {
                                 "sale" -> Color(0xFF4CAF50)
@@ -394,6 +410,108 @@ fun TransactionHistoryScreen(
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = androidx.compose.ui.layout.ContentScale.Fit
                                         )
+                                    }
+                                }
+                            }
+                        }
+                        // --- ADDED: Expandable related transactions section ---
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                                .clickable {
+                                    relatedDetailsExpanded = !relatedDetailsExpanded
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(Modifier.padding(8.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "Show All Related Transactions (${relatedTransactions.size})",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (loadingRelatedDetails) {
+                                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                    } else {
+                                        Icon(
+                                            imageVector = if (relatedDetailsExpanded) 
+                                                androidx.compose.material.icons.Icons.Filled.FilterList
+                                            else androidx.compose.material.icons.Icons.Filled.Search,
+                                            contentDescription = "Expand",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                AnimatedVisibility(visible = relatedDetailsExpanded && !loadingRelatedDetails) {
+                                    Column {
+                                        if (relatedTransactions.isEmpty()) {
+                                            Text("No related transactions found.", color = Color.Gray)
+                                        } else {
+                                            relatedTransactions.forEach { relatedTx ->
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 4.dp),
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                                    )
+                                                ) {
+                                                    Column(Modifier.padding(8.dp)) {
+                                                        Text("Type: ${relatedTx.type}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                        Text("Model: ${relatedTx.model}")
+                                                        Text("Serial: ${relatedTx.serial}")
+                                                        Text("Customer: ${relatedTx.customerName}")
+                                                        Text("Phone: ${relatedTx.phoneNumber}")
+                                                        Text("Aadhaar: ${relatedTx.aadhaarNumber}")
+                                                        Text("Amount: ${relatedTx.amount}")
+                                                        Text("Date: ${relatedTx.date}")
+                                                        Text("Description: ${relatedTx.description}")
+                                                        if (relatedTx.images.isNotEmpty()) {
+                                                            Text("Photos:", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                                                            LazyRow {
+                                                                items(relatedTx.images) { imgUrl ->
+                                                                    Box(
+                                                                        Modifier
+                                                                            .size(80.dp)
+                                                                            .padding(2.dp)
+                                                                            .clip(RoundedCornerShape(8.dp))
+                                                                            .background(Color.Black.copy(alpha = 0.85f))
+                                                                            .clickable {
+                                                                                viewerImages = relatedTx.images
+                                                                                viewerStartIndex = relatedTx.images.indexOf(imgUrl)
+                                                                                showImageViewer = true
+                                                                                zoom = 1f
+                                                                                offsetX = 0f
+                                                                                offsetY = 0f
+                                                                            },
+                                                                        contentAlignment = Alignment.Center
+                                                                    ) {
+                                                                        AsyncImage(
+                                                                            model = ImageRequest.Builder(LocalContext.current)
+                                                                                .data(imgUrl)
+                                                                                .crossfade(true)
+                                                                                .build(),
+                                                                            contentDescription = null,
+                                                                            modifier = Modifier.fillMaxSize(),
+                                                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

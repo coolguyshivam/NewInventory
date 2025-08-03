@@ -1,11 +1,7 @@
 package com.example.inventoryapp.ui.components
 
-import android.Manifest
 import android.app.DatePickerDialog
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,7 +34,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import coil.compose.rememberAsyncImagePainter
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
@@ -81,8 +76,6 @@ fun TransactionForm(
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
-    // Quantity field always disabled and set to "1"
-    var quantity by remember { mutableStateOf("1") }
     var images by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var uploading by remember { mutableStateOf(false) }
@@ -90,7 +83,6 @@ fun TransactionForm(
     var serialError by remember { mutableStateOf<String?>(null) }
     var modelError by remember { mutableStateOf<String?>(null) }
     var amountError by remember { mutableStateOf<String?>(null) }
-    var quantityError by remember { mutableStateOf<String?>(null) }
     var imageLimitError by remember { mutableStateOf<String?>(null) }
 
     val serialFocus = remember { FocusRequester() }
@@ -119,28 +111,30 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    val imagePickerHandler = ImagePickerHandler(
-        context = context,
-        maxImages = maxImages,
-        onGalleryDenied = { galleryDeniedReason = it },
-        onCameraDenied = { cameraDeniedReason = it },
-        onImagesSelected = { uris ->
-            if (images.size + uris.size > maxImages) {
-                imageLimitError = "You can select up to $maxImages images per transaction."
-            } else {
-                images = images + uris.take(maxImages - images.size)
-                imageLimitError = null
+    val imagePickerHandler = remember(context) {
+        ImagePickerHandler(
+            context = context,
+            maxImages = maxImages,
+            onGalleryDenied = { galleryDeniedReason = it },
+            onCameraDenied = { cameraDeniedReason = it },
+            onImagesSelected = { uris ->
+                if (images.size + uris.size > maxImages) {
+                    imageLimitError = "You can select up to $maxImages images per transaction."
+                } else {
+                    images = images + uris.take(maxImages - images.size)
+                    imageLimitError = null
+                }
+            },
+            onImageCaptured = { uri ->
+                if (images.size < maxImages) {
+                    images = images + uri
+                    imageLimitError = null
+                } else {
+                    imageLimitError = "You can select up to $maxImages images per transaction."
+                }
             }
-        },
-        onImageCaptured = { uri ->
-            if (images.size < maxImages) {
-                images = images + uri
-                imageLimitError = null
-            } else {
-                imageLimitError = "You can select up to $maxImages images per transaction."
-            }
-        }
-    )
+        )
+    }
 
     if (galleryDeniedReason != null) {
         LaunchedEffect(galleryDeniedReason) {
@@ -204,7 +198,6 @@ fun TransactionForm(
 
     // Prevent navigation while uploading
     if (uploading) {
-        // Block UI with a dialog and prevent back navigation
         AlertDialog(
             onDismissRequest = { /* Block dismiss */ },
             confirmButton = {},
@@ -240,7 +233,6 @@ fun TransactionForm(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Transaction type segmented buttons
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -335,13 +327,13 @@ fun TransactionForm(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F4F8))
                 ) {
                     Column {
-                        modelSuggestions.forEach {
+                        modelSuggestions.forEach { suggestion ->
                             Text(
-                                text = it,
+                                text = suggestion,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        model = it
+                                        model = suggestion
                                         modelSuggestions = emptyList()
                                     }
                                     .padding(10.dp),
@@ -448,7 +440,6 @@ fun TransactionForm(
                 Text(if (date.isBlank()) "Pick Date" else date, color = MaterialTheme.colorScheme.primary)
             }
 
-            // Quantity field: always 1 and disabled
             OutlinedTextField(
                 value = "1",
                 onValueChange = {},
@@ -468,7 +459,6 @@ fun TransactionForm(
                 enabled = false,
                 shape = RoundedCornerShape(16.dp)
             )
-            // No error message for quantity since it's always valid
 
             Spacer(Modifier.height(10.dp))
 
@@ -488,7 +478,6 @@ fun TransactionForm(
                 Text("${images.size}/$maxImages", color = Color.Gray)
             }
 
-            // Modal sheet for selecting source, moved up using bottom padding
             if (imageSourceSheetOpen) {
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
@@ -514,7 +503,6 @@ fun TransactionForm(
                 }
             }
 
-            // Image thumbnails
             if (images.isNotEmpty()) {
                 Column(Modifier.padding(top = 6.dp, bottom = 6.dp)) {
                     Text("Tap an image to remove", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
@@ -548,7 +536,6 @@ fun TransactionForm(
                     serialError = null
                     modelError = null
                     amountError = null
-                    quantityError = null
 
                     var valid = true
                     if ("serial" in requiredFields && serial.isBlank()) {
@@ -581,7 +568,6 @@ fun TransactionForm(
                             val imageUrls = mutableListOf<String>()
                             if (images.isNotEmpty()) {
                                 val storage = FirebaseStorage.getInstance().reference
-                                // Compress and upload in background
                                 val compressedUris = images.map { uri ->
                                     ImageUtils.compressImageIfNeeded(context, uri)
                                 }
@@ -607,7 +593,7 @@ fun TransactionForm(
                                 amount = amountDouble ?: 0.0,
                                 description = description,
                                 date = date,
-                                quantity = 1, // Always 1
+                                quantity = 1,
                                 imageUrls = imageUrls,
                                 type = type,
                                 timestamp = System.currentTimeMillis()
@@ -637,7 +623,6 @@ fun TransactionForm(
                                     uploading = false
                                     return@launch
                                 }
-                                // Remove item from inventory (moves to 'in repair')
                                 inventoryRepo.removeItemBySerial(serial)
                             }
                             if (type == "Return") {
@@ -647,7 +632,6 @@ fun TransactionForm(
                                     uploading = false
                                     return@launch
                                 }
-                                // If returning from repair, add back to inventory
                                 if (isInRepair) {
                                     val repairedItem = InventoryItem(
                                         serial = serial,
@@ -663,7 +647,7 @@ fun TransactionForm(
                                     )
                                     inventoryRepo.addOrUpdateItem(serial, repairedItem)
                                 }
-                                // If returning a sold item, handle as per your existing logic (e.g., increase inventory)
+                                // Logic for sold item return can be added here
                             }
 
                             val result = inventoryRepo.addTransaction(serial, transaction)
