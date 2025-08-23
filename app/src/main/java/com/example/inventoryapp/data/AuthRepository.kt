@@ -70,6 +70,8 @@ class AuthRepository(private val context: Context) {
     }
 
     fun getCurrentUserRole(): UserRole? = _currentUser.value?.role
+    
+    fun getCurrentUsername(): String? = _currentUser.value?.username
 
     fun isLoggedIn(): Boolean = _currentUser.value != null
 

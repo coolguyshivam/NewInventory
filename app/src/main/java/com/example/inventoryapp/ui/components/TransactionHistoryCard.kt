@@ -29,8 +29,21 @@ fun TransactionHistoryCard(
                 "Model: ${transaction.model} | Serial: ${transaction.serial}",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
-            Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
+            if (transaction.type.uppercase() == "DELETE") {
+                // Special formatting for deletion transactions
+                Text("Type: ITEM DELETED", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                transaction.deletedInfo?.let { deletedInfo ->
+                    Text("Deleted by: ${deletedInfo.deletedBy}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    Text("Deleted at: ${deletedInfo.deletedAt}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                }
+                if (transaction.description.isNotBlank()) {
+                    Text("Item: ${transaction.description}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                }
+            } else {
+                Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
+                Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

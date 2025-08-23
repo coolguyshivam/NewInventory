@@ -12,6 +12,7 @@ interface InventoryRepository {
     suspend fun getAllItems(limit: Int = 20, startAfter: String? = null): Result<List<InventoryItem>>
     suspend fun addOrUpdateItem(serial: String, item: InventoryItem): Result<Unit>
     suspend fun deleteItem(serial: String): Result<Unit>
+    suspend fun deleteItemWithUser(serial: String, deletedBy: String): Result<Unit> // New method with user info
     suspend fun removeItemBySerial(serial: String): Result<Unit> // <-- Added for repair/removal
     suspend fun getTransactionsForSerial(serial: String, limit: Int = 20, startAfter: String? = null): Result<List<Transaction>>
     suspend fun addTransaction(serial: String, transaction: Transaction): Result<Unit>
@@ -63,11 +64,104 @@ class FirebaseInventoryRepository(
         Result.Error(e)
     }
 
-    override suspend fun deleteItem(serial: String): Result<Unit> = try {
+    override suspend fun deleteItemWithUser(serial: String, deletedBy: String): Result<Unit> = try {
+        // First get the item to record its details before deletion
+        val item = getItemBySerial(serial)
+        
+        // Delete the item from inventory
         db.collection("inventory").document(serial).delete().await()
+        
+        // Create a deletion transaction record if item existed
+        if (item != null) {
+            val deletionTransaction = createDeletionTransactionWithUser(item, deletedBy)
+            db.collection("transactions").add(deletionTransaction).await()
+        }
+        
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Error(e)
+    }
+
+    override suspend fun deleteItem(serial: String): Result<Unit> = try {
+        // First get the item to record its details before deletion
+        val item = getItemBySerial(serial)
+        
+        // Delete the item from inventory
+        db.collection("inventory").document(serial).delete().await()
+        
+        // Create a deletion transaction record if item existed
+        if (item != null) {
+            val deletionTransaction = createDeletionTransaction(item)
+            db.collection("transactions").add(deletionTransaction).await()
+        }
+        
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(e)
+    }
+    
+    /**
+     * Creates a deletion transaction record with user information
+     */
+    private fun createDeletionTransactionWithUser(item: InventoryItem, deletedBy: String): Transaction {
+        val currentTime = System.currentTimeMillis()
+        val dateString = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(currentTime))
+        val timestampString = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date(currentTime))
+        
+        return Transaction(
+            id = "", // Firestore will auto-generate
+            type = "DELETE",
+            model = item.model,
+            serial = item.serial,
+            customerName = "SYSTEM DELETION",
+            phoneNumber = "",
+            aadhaarNumber = "",
+            amount = 0.0,
+            quantity = 0,
+            description = "Item deleted from inventory - ${item.name}",
+            date = dateString,
+            timestamp = currentTime,
+            userRole = deletedBy,
+            images = emptyList(),
+            deletedInfo = DeletedInfo(
+                deletedBy = deletedBy,
+                deletedAt = timestampString
+            )
+        )
+    }
+    
+    /**
+     * Creates a deletion transaction record for the transaction history
+     */
+    private fun createDeletionTransaction(item: InventoryItem): Transaction {
+        val currentTime = System.currentTimeMillis()
+        val dateString = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(currentTime))
+        val timestampString = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date(currentTime))
+        
+        return Transaction(
+            id = "", // Firestore will auto-generate
+            type = "DELETE",
+            model = item.model,
+            serial = item.serial,
+            customerName = "SYSTEM DELETION",
+            phoneNumber = "",
+            aadhaarNumber = "",
+            amount = 0.0,
+            quantity = 0,
+            description = "Item deleted from inventory - ${item.name}",
+            date = dateString,
+            timestamp = currentTime,
+            userRole = "SYSTEM", // Will be updated with actual user when possible
+            images = emptyList(),
+            deletedInfo = DeletedInfo(
+                deletedBy = "SYSTEM", // Will be updated with actual user when possible
+                deletedAt = timestampString
+            )
+        )
     }
 
     override suspend fun getTransactionsForSerial(serial: String, limit: Int, startAfter: String?): Result<List<Transaction>> = try {

@@ -46,7 +46,8 @@ import androidx.compose.animation.AnimatedVisibility
 fun InventoryScreen(
     navController: NavController,
     viewModel: InventoryViewModel,
-    inventoryRepo: com.example.inventoryapp.data.InventoryRepository
+    inventoryRepo: com.example.inventoryapp.data.InventoryRepository,
+    authRepo: com.example.inventoryapp.data.AuthRepository? = null
 ) {
     val context = LocalContext.current
     var filterText by remember { mutableStateOf("") }
@@ -162,10 +163,11 @@ fun InventoryScreen(
                             onEdit = { /* implement if needed */ },
                             onDelete = {
                                 scope.launch {
-                                    val result = inventoryRepo.deleteItem(item.serial)
+                                    val currentUsername = authRepo?.getCurrentUsername() ?: "Unknown User"
+                                    val result = inventoryRepo.deleteItemWithUser(item.serial, currentUsername)
                                     if (result is com.example.inventoryapp.data.Result.Success) {
                                         viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item deleted")
+                                        snackbarHostState.showSnackbar("Item deleted and logged to history")
                                     } else if (result is com.example.inventoryapp.data.Result.Error) {
                                         snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
                                     }

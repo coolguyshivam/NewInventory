@@ -103,7 +103,7 @@ fun AppNavHost(
             composable(MainScreen.Inventory.route) {
                 showBottomBar = true
                 val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.provideFactory(inventoryRepo, userRole))
-                InventoryScreen(navController, inventoryViewModel, inventoryRepo)
+                InventoryScreen(navController, inventoryViewModel, inventoryRepo, authRepo)
             }
             composable(MainScreen.Transaction.route) {
                 showBottomBar = true
