@@ -115,9 +115,26 @@ fun TransactionForm(
     // Permissions state/messages
     var galleryDeniedReason by remember { mutableStateOf<String?>(null) }
     var cameraDeniedReason by remember { mutableStateOf<String?>(null) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var permissionToRequest by remember { mutableStateOf<Array<String>>(emptyArray()) }
+    var permissionExplanation by remember { mutableStateOf("") }
 
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
+    
+    // Permission launchers
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (!allGranted) {
+            val deniedPermissions = permissions.filter { !it.value }.keys
+            val permissionName = deniedPermissions.joinToString(", ") { 
+                com.example.inventoryapp.utils.PermissionUtils.getPermissionDisplayName(it) 
+            }
+            showPermissionDialog = true
+        }
+    }
 
     val imagePickerHandler = remember(context) {
         ImagePickerHandler(
@@ -140,6 +157,11 @@ fun TransactionForm(
                 } else {
                     imageLimitError = "You can select up to $maxImages images per transaction."
                 }
+            },
+            onPermissionNeeded = { permissions, explanation ->
+                permissionToRequest = permissions
+                permissionExplanation = explanation
+                permissionLauncher.launch(permissions)
             }
         )
     }
@@ -802,5 +824,42 @@ fun TransactionForm(
                 )
             }
         }
+    }
+    
+    // Permission dialog
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Permission Required") },
+            text = {
+                Column {
+                    Text(permissionExplanation)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Please grant the required permissions in Settings to use this feature.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPermissionDialog = false
+                        val intent = com.example.inventoryapp.utils.PermissionUtils.createAppSettingsIntent(context)
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showPermissionDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

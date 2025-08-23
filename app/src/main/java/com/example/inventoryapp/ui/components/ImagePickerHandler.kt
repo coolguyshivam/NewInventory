@@ -7,6 +7,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import com.example.inventoryapp.utils.ImageUtils
+import com.example.inventoryapp.utils.PermissionUtils
 
 class ImagePickerHandler(
     val context: Context,
@@ -14,7 +15,8 @@ class ImagePickerHandler(
     val onGalleryDenied: (String) -> Unit,
     val onCameraDenied: (String) -> Unit,
     val onImagesSelected: (List<Uri>) -> Unit,
-    val onImageCaptured: (Uri) -> Unit
+    val onImageCaptured: (Uri) -> Unit,
+    val onPermissionNeeded: (Array<String>, String) -> Unit // New callback for permission requests
 ) {
     private var galleryLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>? = null
     private var cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>? = null
@@ -31,17 +33,31 @@ class ImagePickerHandler(
     }
     
     fun launchGallery() {
-        galleryLauncher?.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            ?: onGalleryDenied("Gallery launcher not initialized")
+        if (PermissionUtils.isStoragePermissionGranted(context)) {
+            galleryLauncher?.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                ?: onGalleryDenied("Gallery launcher not initialized")
+        } else {
+            onPermissionNeeded(
+                PermissionUtils.getStoragePermissions(),
+                "Storage permission is needed to select images from your gallery."
+            )
+        }
     }
 
     fun launchCamera() {
-        try {
-            val uri = ImageUtils.createCameraImageUri(context)
-            setCameraImageUri?.invoke(uri)
-            cameraLauncher?.launch(uri) ?: onCameraDenied("Camera launcher not initialized")
-        } catch (e: Exception) {
-            onCameraDenied("Failed to launch camera: ${e.message}")
+        if (PermissionUtils.isCameraPermissionGranted(context)) {
+            try {
+                val uri = ImageUtils.createCameraImageUri(context)
+                setCameraImageUri?.invoke(uri)
+                cameraLauncher?.launch(uri) ?: onCameraDenied("Camera launcher not initialized")
+            } catch (e: Exception) {
+                onCameraDenied("Failed to launch camera: ${e.message}")
+            }
+        } else {
+            onPermissionNeeded(
+                PermissionUtils.getCameraPermissions(),
+                "Camera permission is needed to take photos."
+            )
         }
     }
 }

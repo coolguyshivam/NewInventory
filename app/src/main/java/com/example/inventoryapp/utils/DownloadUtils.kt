@@ -28,21 +28,13 @@ suspend fun downloadImageToGallery(
     onDownloadError: (String) -> Unit
 ) {
     withContext(Dispatchers.IO) {
-        // Permission check for Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val permission = Manifest.permission.READ_MEDIA_IMAGES
-            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                onDownloadError("Missing permission: READ_MEDIA_IMAGES")
-                return@withContext
+        // Check permissions using PermissionUtils
+        if (!PermissionUtils.isDownloadPermissionGranted(context)) {
+            val permissionName = PermissionUtils.getDownloadPermissions().joinToString(", ") { 
+                PermissionUtils.getPermissionDisplayName(it) 
             }
-        }
-        // Permission check for Android < 13 (not strictly needed for MediaStore, but for completeness)
-        else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val permission = Manifest.permission.WRITE_EXTERNAL_STORAGE
-            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                onDownloadError("Missing permission: WRITE_EXTERNAL_STORAGE")
-                return@withContext
-            }
+            onDownloadError("Missing permission: $permissionName. Please grant permissions in Settings.")
+            return@withContext
         }
 
         try {
