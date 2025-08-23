@@ -43,7 +43,16 @@ object ImageUtils {
                 val source = ImageDecoder.createSource(context.contentResolver, uri)
                 ImageDecoder.decodeBitmap(source)
             } else {
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                @Suppress("DEPRECATION")
+                // Use BitmapFactory for lower APIs instead of deprecated MediaStore.Images.Media.getBitmap
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bmp = if (inputStream != null) {
+                    android.graphics.BitmapFactory.decodeStream(inputStream)
+                } else {
+                    null
+                }
+                inputStream?.close()
+                bmp ?: return uri
             }
             val maxDim = 1080
             val scale = minOf(
