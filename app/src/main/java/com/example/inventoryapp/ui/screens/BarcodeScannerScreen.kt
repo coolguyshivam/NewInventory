@@ -1,351 +1,515 @@
 package com.example.inventoryapp.ui.screens
 
+import android.Manifest
 import android.content.Context
-import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTransformGestures
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import com.example.inventoryapp.model.InventoryFilters
+import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.InventoryViewModel
-import com.example.inventoryapp.model.UserRole
-import com.example.inventoryapp.utils.downloadImageToGallery
-import com.example.inventoryapp.ui.components.InventoryCard
-import kotlinx.coroutines.delay
+import com.example.inventoryapp.utils.IMEIValidator
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.window.Dialog
-import androidx.compose.animation.AnimatedVisibility
+import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BarcodeScannerScreen(
     navController: NavController,
     viewModel: InventoryViewModel,
-    inventoryRepo: com.example.inventoryapp.data.InventoryRepository
+    inventoryRepo: InventoryRepository
 ) {
     val context = LocalContext.current
-    var filterText by remember { mutableStateOf("") }
-    val inventory by viewModel.inventory.observeAsState(emptyList())
-    val loading by viewModel.loading.observeAsState(false)
-    val error by viewModel.error.observeAsState()
-    val filters by viewModel.filters.observeAsState(InventoryFilters())
-    val role = viewModel.userRole
-    val sortBy by viewModel.sortBy.collectAsState()
-
-    var sortMenuExpanded by remember { mutableStateOf(false) }
-    var selectedSerials by remember { mutableStateOf(setOf<String>()) }
-    val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
-
-    var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
-    var filterDialogVisible by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    var showPhotoViewer by remember { mutableStateOf(false) }
-    var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
-    var photoViewerStartIndex by remember { mutableStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
-
-    var zoom by remember { mutableStateOf(1f) }
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
-    var downloading by remember { mutableStateOf(false) }
-
-    var lastInventory by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
-    LaunchedEffect(inventory) { lastInventory = inventory }
+    
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    var scannedText by remember { mutableStateOf<String?>(null) }
+    var isScanning by remember { mutableStateOf(true) }
+    var scanResult by remember { mutableStateOf<ScanResult?>(null) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+        if (!isGranted) {
+            showPermissionDialog = true
+        }
+    }
+    
+    // Request permission if not granted
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000)
-            val result = inventoryRepo.getAllItems(limit = 100)
-            if (result is com.example.inventoryapp.data.Result.Success && result.data != lastInventory) {
-                viewModel.loadInventory()
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+    
+    // Process scan result
+    LaunchedEffect(scannedText) {
+        scannedText?.let { text ->
+            isScanning = false
+            
+            if (IMEIValidator.isIMEIFormat(text)) {
+                if (IMEIValidator.isValidIMEI(text)) {
+                    // Check if IMEI exists in inventory
+                    val existingItem = inventoryRepo.getItemBySerial(text)
+                    scanResult = if (existingItem != null) {
+                        ScanResult.ItemFound(existingItem)
+                    } else {
+                        ScanResult.CreateNew(text)
+                    }
+                } else {
+                    scanResult = ScanResult.InvalidIMEI(text)
+                }
+            } else {
+                scanResult = ScanResult.NotIMEI(text)
             }
         }
     }
-
-    LaunchedEffect(inventory) {
-        inventory.forEach { item ->
-            if (item.quantity <= 0 || item.isSold || item.isInRepair) {
-                scope.launch { inventoryRepo.deleteItem(item.serial) }
-            }
-        }
-    }
-
-    val scannedSerialLive = navController.currentBackStackEntry?.savedStateHandle?.getLiveData<String>("scannedSerial")
-    val scannedSerialState = scannedSerialLive?.observeAsState()
-    val scannedSerial = scannedSerialState?.value
-    LaunchedEffect(scannedSerial) {
-        scannedSerial?.let { serial ->
-            filterText = serial
-            viewModel.searchInventory(serial)
-            viewModel.updateSerialFilter(serial)
-            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("scannedSerial")
-        }
-    }
-
+    
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Barcode Scanner") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp)
                 .padding(paddingValues)
         ) {
-            OutlinedTextField(
-                value = filterText,
-                onValueChange = {
-                    filterText = it
-                    viewModel.searchInventory(it)
-                },
-                placeholder = { Text("Search inventory...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    Row {
-                        IconButton(onClick = { filterDialogVisible = true }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                        }
-                        IconButton(onClick = { navController.navigate("barcode_scanner") }) {
-                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Barcode")
-                        }
-                        IconButton(onClick = { viewModel.loadInventory() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-
-            when {
-                loading == true -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
-                }
-                inventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No inventory items found.")
-                }
-                else -> LazyColumn {
-                    itemsIndexed(inventory, key = { _, item -> item.serial }) { _, item ->
-                        InventoryCard(
-                            item = item,
-                            userRole = role,
-                            onClick = { selectedItem = item },
-                            onEdit = { /* implement if needed */ },
-                            onDelete = {
-                                scope.launch {
-                                    val result = inventoryRepo.deleteItem(item.serial)
-                                    if (result is com.example.inventoryapp.data.Result.Success) {
-                                        viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item deleted")
-                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
-                                    }
-                                }
-                            },
-                            onAddTransaction = { /* implement if needed */ },
-                            onViewHistory = { /* implement if needed */ },
-                            onArchive = { /* archive not used */ },
-                            onSelectionChange = { checked: Boolean ->
-                                selectedSerials = if (checked) selectedSerials + item.serial else selectedSerials - item.serial
-                            },
-                            isSelected = selectedSerials.contains(item.serial),
-                            imageUrls = item.imageUrls,
-                            onImageClick = { imgIdx: Int ->
-                                photoViewerImages = item.imageUrls
-                                photoViewerStartIndex = imgIdx
-                                showPhotoViewer = true
-                                zoom = 1f
-                                offsetX = 0f
-                                offsetY = 0f
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (selectedItem != null) {
-                AlertDialog(
-                    onDismissRequest = { selectedItem = null },
-                    title = { Text(selectedItem?.name ?: "Item Details") },
-                    text = { Text("Model: ${selectedItem?.model}\nSerial: ${selectedItem?.serial}\nQuantity: ${selectedItem?.quantity}\nDescription: ${selectedItem?.description}") },
-                    confirmButton = {
-                        Button(onClick = { selectedItem = null }) { Text("Close") }
-                    }
-                )
-            }
-
-            AnimatedVisibility(visible = showPhotoViewer && photoViewerImages.isNotEmpty()) {
-                Dialog(onDismissRequest = { showPhotoViewer = false }) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(350.dp)
-                            .background(Color.Black)
-                            .pointerInput(Unit) {
-                                detectTransformGestures { _, pan, zoomChange, _ ->
-                                    zoom = (zoom * zoomChange).coerceIn(1f, 4f)
-                                    offsetX += pan.x
-                                    offsetY += pan.y
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+            if (!hasCameraPermission) {
+                // Permission denied UI
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Camera Permission Required",
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "To scan barcodes, please grant camera permission.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }
                     ) {
-                        AsyncImage(
-                            model = photoViewerImages.getOrNull(photoViewerStartIndex),
-                            contentDescription = "Inventory Image",
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth()
-                                .graphicsLayer(
-                                    scaleX = zoom,
-                                    scaleY = zoom,
-                                    translationX = offsetX,
-                                    translationY = offsetY
-                                ),
-                        )
-
-                        Row(
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(16.dp)
-                        ) {
-                            photoViewerImages.forEachIndexed { idx, _ ->
-                                Box(
-                                    Modifier
-                                        .size(12.dp)
-                                        .background(if (photoViewerStartIndex == idx) Color.White else Color.Gray, CircleShape)
-                                        .clickable { photoViewerStartIndex = idx }
-                                )
-                                Spacer(Modifier.width(8.dp))
-                            }
-                        }
-                        IconButton(
-                            onClick = {
-                                downloading = true
-                                val url = photoViewerImages.getOrNull(photoViewerStartIndex)
-                                url?.let {
-                                    scope.launch {
-                                        downloadImageToGallery(
-                                            context = context,
-                                            url = it,
-                                            fileName = "inventory_image_${System.currentTimeMillis()}.jpg",
-                                            onDownloadComplete = {
-                                                downloading = false
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("Image downloaded to gallery!")
-                                                }
-                                            },
-                                            onDownloadError = { errorMsg ->
-                                                downloading = false
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("Failed to download image: $errorMsg")
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
+                        Text("Grant Permission")
+                    }
+                }
+            } else if (scanResult != null) {
+                // Show scan result
+                ScanResultContent(
+                    result = scanResult!!,
+                    onRescan = {
+                        scannedText = null
+                        scanResult = null
+                        isScanning = true
+                    },
+                    onNavigateToItem = { item ->
+                        // Navigate to item details or edit screen
+                        navController.navigate("transaction_screen?type=Edit&serial=${item.serial}&model=${item.model}")
+                    },
+                    onCreateNewItem = { imei ->
+                        // Navigate to create new item with IMEI pre-filled
+                        navController.navigate("transaction_screen?type=Purchase&serial=$imei&model=")
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Camera preview
+                if (isScanning) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        CameraPreview(
+                            onBarcodeScanned = { barcode ->
+                                scannedText = barcode
                             },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .background(Color.Black.copy(alpha = 0.6f), CircleShape),
-                            enabled = !downloading
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        
+                        // Scanning overlay
+                        ScanningOverlay(
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    
+                    // Instructions
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            if (downloading) CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                            else Icon(Icons.Default.Download, contentDescription = "Download", tint = Color.White)
-                        }
-                        IconButton(
-                            onClick = { showPhotoViewer = false },
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(8.dp)
-                                .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Photo, contentDescription = "Close", tint = Color.White)
+                            Text(
+                                text = "Point camera at IMEI barcode",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Looking for 15-digit IMEI numbers",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
 
-            if (filterDialogVisible) {
-                AlertDialog(
-                    onDismissRequest = { filterDialogVisible = false },
-                    title = { Text("Filter Inventory", style = MaterialTheme.typography.headlineSmall) },
-                    text = {
-                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            OutlinedTextField(
-                                value = filters.serial ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(serial = it)) },
-                                label = { Text("Serial Number") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OutlinedTextField(
-                                value = filters.model ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(model = it)) },
-                                label = { Text("Model") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OutlinedTextField(
-                                value = filters.quantity?.toString() ?: "",
-                                onValueChange = { value: String ->
-                                    val q = value.toIntOrNull()
-                                    viewModel.setFilters(filters.copy(quantity = q))
-                                },
-                                label = { Text("Quantity") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OutlinedTextField(
-                                value = filters.date ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(date = it)) },
-                                label = { Text("Date (yyyy-MM-dd)") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(
-                                onClick = {
-                                    viewModel.setFilters(InventoryFilters())
-                                    filterDialogVisible = false
-                                }
-                            ) { Text("Clear") }
-                            Button(
-                                onClick = { filterDialogVisible = false },
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("Apply") }
+// Data class for scan results
+sealed class ScanResult {
+    data class ItemFound(val item: InventoryItem) : ScanResult()
+    data class CreateNew(val imei: String) : ScanResult()
+    data class InvalidIMEI(val scannedText: String) : ScanResult()
+    data class NotIMEI(val scannedText: String) : ScanResult()
+}
+
+@Composable
+fun ScanResultContent(
+    result: ScanResult,
+    onRescan: () -> Unit,
+    onNavigateToItem: (InventoryItem) -> Unit,
+    onCreateNewItem: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        when (result) {
+            is ScanResult.ItemFound -> {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.Green,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Item Found!",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.Green,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("Serial: ${result.item.serial}")
+                        Text("Name: ${result.item.name}")
+                        Text("Model: ${result.item.model}")
+                        if (result.item.description.isNotBlank()) {
+                            Text("Description: ${result.item.description}")
                         }
                     }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onRescan) {
+                        Text("Scan Again")
+                    }
+                    Button(
+                        onClick = { onNavigateToItem(result.item) }
+                    ) {
+                        Text("View Item")
+                    }
+                }
+            }
+            
+            is ScanResult.CreateNew -> {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "New IMEI Detected",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("IMEI: ${result.imei}")
+                        Text("This IMEI is not in your inventory.")
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onRescan) {
+                        Text("Scan Again")
+                    }
+                    Button(
+                        onClick = { onCreateNewItem(result.imei) }
+                    ) {
+                        Text("Add New Item")
+                    }
+                }
+            }
+            
+            is ScanResult.InvalidIMEI -> {
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Invalid IMEI",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("Scanned: ${result.scannedText}")
+                        Text("This appears to be a 15-digit number but fails IMEI validation.")
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onRescan) {
+                    Text("Scan Again")
+                }
+            }
+            
+            is ScanResult.NotIMEI -> {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color.Orange,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Not an IMEI",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.Orange,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text("Scanned: ${result.scannedText}")
+                        Text("Please scan a 15-digit IMEI barcode.")
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onRescan) {
+                    Text("Scan Again")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CameraPreview(
+    onBarcodeScanned: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+            val executor = Executors.newSingleThreadExecutor()
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+            
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+                
+                val imageAnalyzer = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also {
+                        it.setAnalyzer(executor, BarcodeAnalyzer(onBarcodeScanned))
+                    }
+                
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageAnalyzer
+                    )
+                } catch (exc: Exception) {
+                    // Handle camera binding exception
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+            
+            previewView
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun ScanningOverlay(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        // Scanning frame
+        Box(
+            modifier = Modifier
+                .size(250.dp)
+                .background(
+                    Color.Transparent,
+                    RoundedCornerShape(16.dp)
+                )
+                .padding(4.dp)
+        ) {
+            // Corner indicators
+            repeat(4) { index ->
+                val alignment = when (index) {
+                    0 -> Alignment.TopStart
+                    1 -> Alignment.TopEnd
+                    2 -> Alignment.BottomStart
+                    else -> Alignment.BottomEnd
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .align(alignment)
+                        .size(24.dp)
+                        .background(
+                            Color.White,
+                            RoundedCornerShape(4.dp)
+                        )
                 )
             }
+        }
+    }
+}
+
+// Barcode analyzer for MLKit
+class BarcodeAnalyzer(
+    private val onBarcodeScanned: (String) -> Unit
+) : ImageAnalysis.Analyzer {
+    
+    private val scanner = BarcodeScanning.getClient()
+    private var lastScannedTime = 0L
+    private val scanCooldown = 2000L // 2 seconds cooldown
+    
+    override fun analyze(imageProxy: ImageProxy) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastScannedTime < scanCooldown) {
+            imageProxy.close()
+            return
+        }
+        
+        val mediaImage = imageProxy.image
+        if (mediaImage != null) {
+            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            
+            scanner.process(image)
+                .addOnSuccessListener { barcodes ->
+                    for (barcode in barcodes) {
+                        barcode.rawValue?.let { value ->
+                            lastScannedTime = currentTime
+                            onBarcodeScanned(value)
+                            break
+                        }
+                    }
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        } else {
+            imageProxy.close()
         }
     }
 }
