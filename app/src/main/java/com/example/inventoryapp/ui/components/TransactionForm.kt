@@ -333,7 +333,10 @@ fun TransactionForm(
                     .focusRequester(serialFocus),
                 singleLine = true,
                 trailingIcon = {
-                    IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                    IconButton(
+                        onClick = { navController.navigate("barcode_reader") },
+                        modifier = Modifier.testTag("barcodeIcon")
+                    ) {
                         Icon(
                             Icons.Filled.QrCodeScanner,
                             contentDescription = "Scan Barcode",
@@ -683,6 +686,12 @@ fun TransactionForm(
                             // Business rules
                             if (type == "Sale" && (item == null || item.quantity < 1)) {
                                 snackbarHostState.showSnackbar("Cannot sell: item not in inventory or insufficient stock.")
+                                loading = false
+                                uploading = false
+                                return@launch
+                            }
+                            if (type == "Sale" && item != null && !item.canSell()) {
+                                snackbarHostState.showSnackbar("Cannot sell: item is currently in repair mode.")
                                 loading = false
                                 uploading = false
                                 return@launch

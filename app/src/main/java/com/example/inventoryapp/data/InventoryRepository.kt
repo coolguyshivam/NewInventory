@@ -2,6 +2,7 @@ package com.example.inventoryapp.data
 
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.Transaction
+import com.example.inventoryapp.model.DeletedInfo
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.toObject
@@ -28,6 +29,9 @@ interface InventoryRepository {
     // --- New helper for transaction forms/screens ---
     suspend fun wasSerialSold(serial: String): Boolean
     suspend fun isSerialInRepair(serial: String): Boolean // <-- Added for in-repair logic
+    
+    // --- Added for deletion logging ---
+    suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit>
 }
 
 // --- Firebase implementation ---
@@ -186,5 +190,33 @@ class FirebaseInventoryRepository(
         val lastTx = txSnapshot.documents.firstOrNull()?.toObject<Transaction>()
         val isInInventory = getItemBySerial(serial) != null
         return (lastTx?.type == "Repair") && !isInInventory
+    }
+    
+    override suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit> = try {
+        val deleteTransaction = Transaction(
+            id = "",
+            type = "DELETE",
+            model = item.model,
+            serial = serial,
+            customerName = "",
+            phoneNumber = "",
+            aadhaarNumber = "",
+            amount = 0.0,
+            quantity = 1,
+            description = "Item deleted from inventory",
+            date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
+            timestamp = System.currentTimeMillis(),
+            userRole = deletedBy,
+            images = emptyList(),
+            deletedInfo = DeletedInfo(
+                deletedBy = deletedBy,
+                deletedAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+            )
+        )
+        
+        db.collection("transactions").add(deleteTransaction).await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(e)
     }
 }

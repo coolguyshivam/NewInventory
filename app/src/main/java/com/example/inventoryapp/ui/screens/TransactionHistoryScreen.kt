@@ -32,7 +32,7 @@ import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
-import com.example.inventoryapp.utils.downloadImageToGallery
+import com.example.inventoryapp.utils.ImageSaveUtils
 import com.example.inventoryapp.ui.components.TransactionHistoryCard
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -46,13 +46,14 @@ fun TransactionHistoryScreen(
     navController: NavController? = null,
     userRole: UserRole,
     navToBarcodeScanner: (() -> Unit)? = null,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    filterBySerial: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
     var selectedTx by remember { mutableStateOf<Transaction?>(null) }
-    var searchText by remember { mutableStateOf("") }
+    var searchText by remember { mutableStateOf(filterBySerial ?: "") }
     var filterDialogVisible by remember { mutableStateOf(false) }
     var sortBy by remember { mutableStateOf("Date") }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -151,9 +152,9 @@ fun TransactionHistoryScreen(
                         }
                         IconButton(onClick = {
                             if (navToBarcodeScanner != null) {
-                                navToBarcodeScanner()
+                                navController?.navigate("barcode_reader")
                             } else if (navController != null) {
-                                navController.navigate("barcode_scanner")
+                                navController.navigate("barcode_reader")
                             }
                         }) {
                             Icon(Icons.Default.QrCodeScanner, contentDescription = "Barcode")
@@ -232,6 +233,7 @@ fun TransactionHistoryScreen(
                                 "purchase" -> Color(0xFF2196F3)
                                 "repair" -> Color(0xFFFFA726)
                                 "return" -> Color(0xFFBDBDBD)
+                                "delete" -> Color(0xFFE53E3E) // Red for DELETE entries
                                 else -> MaterialTheme.colorScheme.surface
                             }
                         )
@@ -559,20 +561,20 @@ fun TransactionHistoryScreen(
                                 downloading = true
                                 imgUrl?.let { url ->
                                     scope.launch {
-                                        downloadImageToGallery(
+                                        ImageSaveUtils.saveImage(
                                             context = context,
                                             url = url,
-                                            fileName = "transaction_image_${System.currentTimeMillis()}.jpg",
-                                            onDownloadComplete = {
+                                            filename = "transaction_image_${System.currentTimeMillis()}.jpg",
+                                            onSuccess = { message ->
                                                 downloading = false
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("Image downloaded to gallery!")
+                                                    snackbarHostState.showSnackbar(message)
                                                 }
                                             },
-                                            onDownloadError = { errorMsg ->
+                                            onError = { errorMsg ->
                                                 downloading = false
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar("Failed to download image: $errorMsg")
+                                                    snackbarHostState.showSnackbar("Failed to save image: $errorMsg")
                                                 }
                                             }
                                         )
