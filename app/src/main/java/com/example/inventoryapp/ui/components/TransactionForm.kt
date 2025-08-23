@@ -690,6 +690,12 @@ fun TransactionForm(
                                 uploading = false
                                 return@launch
                             }
+                            if (type == "Sale" && item != null && !item.canSell()) {
+                                snackbarHostState.showSnackbar("Cannot sell: item is currently in repair mode.")
+                                loading = false
+                                uploading = false
+                                return@launch
+                            }
                             if (type == "Purchase" && item != null) {
                                 snackbarHostState.showSnackbar("Cannot purchase: serial already exists in inventory.")
                                 loading = false

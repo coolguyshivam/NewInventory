@@ -147,6 +147,22 @@ fun AppNavHost(
                     navToBarcodeScanner = { navController.navigate("barcode_reader") }
                 )
             }
+            composable(
+                route = "transaction_history/{serial}",
+                arguments = listOf(
+                    navArgument("serial") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                showBottomBar = true
+                val serial = backStackEntry.arguments?.getString("serial") ?: ""
+                TransactionHistoryScreen(
+                    inventoryRepo = inventoryRepo,
+                    navController = navController,
+                    userRole = userRole,
+                    navToBarcodeScanner = { navController.navigate("barcode_reader") },
+                    filterBySerial = serial
+                )
+            }
             composable("barcode_scanner") {
                 showBottomBar = false
                 // Pass all required parameters to BarcodeScannerScreen!

@@ -161,6 +161,11 @@ fun InventoryScreen(
                             onEdit = { /* implement if needed */ },
                             onDelete = {
                                 scope.launch {
+                                    if (!item.canDelete()) {
+                                        snackbarHostState.showSnackbar("Cannot delete item: ensure item is available or in repair status")
+                                        return@launch
+                                    }
+                                    
                                     // First create DELETE transaction, then delete item
                                     val deleteResult = inventoryRepo.createDeleteTransaction(
                                         serial = item.serial,
@@ -187,12 +192,15 @@ fun InventoryScreen(
                             },
                             onViewHistory = { 
                                 // Navigate to transaction history filtered by serial
-                                navController.navigate("transaction_history")
-                                // TODO: Add serial filter parameter
+                                navController.navigate("transaction_history/${item.serial}")
                             },
                             onArchive = { /* archive not used */ },
                             onMarkRepair = {
                                 scope.launch {
+                                    if (!item.canMarkRepair()) {
+                                        snackbarHostState.showSnackbar("Cannot mark item as repair: item must be available")
+                                        return@launch
+                                    }
                                     val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
                                     val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
                                     if (result is com.example.inventoryapp.data.Result.Success) {
@@ -205,6 +213,10 @@ fun InventoryScreen(
                             },
                             onReturn = {
                                 scope.launch {
+                                    if (!item.canReturn()) {
+                                        snackbarHostState.showSnackbar("Cannot return item: item must be in repair or sold")
+                                        return@launch
+                                    }
                                     val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.AVAILABLE)
                                     val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
                                     if (result is com.example.inventoryapp.data.Result.Success) {

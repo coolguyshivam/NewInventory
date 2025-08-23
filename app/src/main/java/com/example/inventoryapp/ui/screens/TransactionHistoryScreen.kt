@@ -46,13 +46,14 @@ fun TransactionHistoryScreen(
     navController: NavController? = null,
     userRole: UserRole,
     navToBarcodeScanner: (() -> Unit)? = null,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    filterBySerial: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
     var selectedTx by remember { mutableStateOf<Transaction?>(null) }
-    var searchText by remember { mutableStateOf("") }
+    var searchText by remember { mutableStateOf(filterBySerial ?: "") }
     var filterDialogVisible by remember { mutableStateOf(false) }
     var sortBy by remember { mutableStateOf("Date") }
     var sortMenuExpanded by remember { mutableStateOf(false) }

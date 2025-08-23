@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -159,7 +160,8 @@ fun BarcodeReaderScreen(
                                     color = if (isValidIMEI) 
                                         MaterialTheme.colorScheme.onPrimaryContainer 
                                     else 
-                                        MaterialTheme.colorScheme.onErrorContainer
+                                        MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.testTag("imeiValue")
                                 )
                                 if (!isValidIMEI && scannedCode!!.length == 15) {
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -234,7 +236,11 @@ fun BarcodeReaderScreen(
                 
                 else -> {
                     // Camera preview with scanner
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("barcodeScanner")
+                    ) {
                         BarcodeCamera(
                             modifier = Modifier.fillMaxSize(),
                             lifecycleOwner = lifecycleOwner,
