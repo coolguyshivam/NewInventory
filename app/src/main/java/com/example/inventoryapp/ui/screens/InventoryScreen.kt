@@ -30,6 +30,7 @@ import coil.compose.AsyncImage
 import com.example.inventoryapp.model.InventoryFilters
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.InventoryViewModel
+import com.example.inventoryapp.model.InventoryStatus
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.downloadImageToGallery
 import com.example.inventoryapp.ui.components.InventoryCard
@@ -170,8 +171,16 @@ fun InventoryScreen(
                                     }
                                 }
                             },
-                            onAddTransaction = { /* implement if needed */ },
-                            onViewHistory = { /* implement if needed */ },
+                            onAddTransaction = { 
+                                // Navigate to transaction screen with item prefilled
+                                navController.navigate("transaction_screen?type=Sell&serial=${item.serial}&model=${item.model}")
+                            },
+                            onViewHistory = { 
+                                // Navigate to transaction history for this item
+                                viewModel.loadTransactionHistory(item.serial)
+                                // For now, we'll show a simple dialog. Later we can navigate to a dedicated history screen
+                                selectedItem = item
+                            },
                             onArchive = { /* archive not used */ },
                             onSelectionChange = { checked: Boolean ->
                                 selectedSerials = if (checked) selectedSerials + item.serial else selectedSerials - item.serial
@@ -185,6 +194,18 @@ fun InventoryScreen(
                                 zoom = 1f
                                 offsetX = 0f
                                 offsetY = 0f
+                            },
+                            onStatusChange = { newStatus ->
+                                scope.launch {
+                                    val updatedItem = item.withStatus(newStatus)
+                                    val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
+                                    if (result is com.example.inventoryapp.data.Result.Success) {
+                                        viewModel.loadInventory()
+                                        snackbarHostState.showSnackbar("Status updated to ${newStatus.getDisplayName()}")
+                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Status update failed!")
+                                    }
+                                }
                             }
                         )
                     }
