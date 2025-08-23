@@ -2,10 +2,12 @@ package com.example.inventoryapp.ui.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -66,10 +68,12 @@ fun InventoryCard(
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 },
                 role = Role.Button
-            ),
+            )
+            .alpha(if (item.isInRepair) 0.6f else 1f), // Dim items in repair
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Box {
+            Column(modifier = Modifier.padding(16.dp)) {
             // --- IMAGES ---
             if (imageUrls.isNotEmpty()) {
                 Row(
@@ -154,6 +158,27 @@ fun InventoryCard(
                         Text("History")
                     }
                 }
+            }
+        }
+        
+        // Repair Mode stamp in top-right corner
+        if (item.isInRepair) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(
+                        Color.Red,
+                        RoundedCornerShape(4.dp)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "REPAIR MODE",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

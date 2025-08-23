@@ -30,6 +30,7 @@ import coil.compose.AsyncImage
 import com.example.inventoryapp.model.InventoryFilters
 import com.example.inventoryapp.model.InventoryItem
 import com.example.inventoryapp.model.InventoryViewModel
+import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.downloadImageToGallery
 import com.example.inventoryapp.ui.components.InventoryCard
@@ -161,17 +162,46 @@ fun InventoryScreen(
                             onEdit = { /* implement if needed */ },
                             onDelete = {
                                 scope.launch {
+                                    // Create transaction history entry for deletion
+                                    val currentDateTime = java.time.LocalDateTime.now()
+                                    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                                    val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                                    
+                                    val deleteTransaction = Transaction(
+                                        type = "Delete",
+                                        model = item.model,
+                                        serial = item.serial,
+                                        customerName = "System",
+                                        amount = 0.0,
+                                        description = "Item deleted from inventory",
+                                        date = currentDateTime.format(dateFormatter),
+                                        timestamp = System.currentTimeMillis(),
+                                        userRole = role.name,
+                                        deletedInfo = com.example.inventoryapp.model.DeletedInfo(
+                                            deletedBy = role.name,
+                                            deletedAt = currentDateTime.format(timeFormatter)
+                                        )
+                                    )
+                                    
+                                    // Add transaction history entry first
+                                    inventoryRepo.addTransaction(item.serial, deleteTransaction)
+                                    
+                                    // Then delete the item
                                     val result = inventoryRepo.deleteItem(item.serial)
                                     if (result is com.example.inventoryapp.data.Result.Success) {
                                         viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item deleted")
+                                        snackbarHostState.showSnackbar("Item deleted and logged to history")
                                     } else if (result is com.example.inventoryapp.data.Result.Error) {
                                         snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
                                     }
                                 }
                             },
-                            onAddTransaction = { /* implement if needed */ },
-                            onViewHistory = { /* implement if needed */ },
+                            onAddTransaction = { 
+                                navController.navigate("transaction_screen?type=&serial=${item.serial}&model=${item.model}")
+                            },
+                            onViewHistory = { 
+                                navController.navigate("transaction_history")
+                            },
                             onArchive = { /* archive not used */ },
                             onSelectionChange = { checked: Boolean ->
                                 selectedSerials = if (checked) selectedSerials + item.serial else selectedSerials - item.serial

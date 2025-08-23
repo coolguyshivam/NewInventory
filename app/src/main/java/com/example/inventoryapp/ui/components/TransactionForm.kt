@@ -558,7 +558,7 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 120.dp) // Increased padding to avoid overlap
                 ) {
                     ListItem(
                         headlineContent = { Text("Take Photo") },
@@ -683,6 +683,12 @@ fun TransactionForm(
                             // Business rules
                             if (type == "Sale" && (item == null || item.quantity < 1)) {
                                 snackbarHostState.showSnackbar("Cannot sell: item not in inventory or insufficient stock.")
+                                loading = false
+                                uploading = false
+                                return@launch
+                            }
+                            if (type == "Sale" && item != null && item.isInRepair) {
+                                snackbarHostState.showSnackbar("Cannot sell: item is currently in repair mode.")
                                 loading = false
                                 uploading = false
                                 return@launch
