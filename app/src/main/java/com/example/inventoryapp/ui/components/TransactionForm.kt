@@ -706,7 +706,9 @@ fun TransactionForm(
                                     uploading = false
                                     return@launch
                                 }
-                                inventoryRepo.removeItemBySerial(serial)
+                                // Mark item as in repair instead of removing it
+                                val repairItem = item.copy(isInRepair = true)
+                                inventoryRepo.addOrUpdateItem(serial, repairItem)
                             }
                             if (type == "Return") {
                                 if (!wasSold && !isInRepair) {
@@ -726,7 +728,8 @@ fun TransactionForm(
                                         description = description,
                                         date = date,
                                         timestamp = System.currentTimeMillis(),
-                                        imageUrls = imageUrls
+                                        imageUrls = imageUrls,
+                                        isInRepair = false // Explicitly mark as not in repair
                                     )
                                     inventoryRepo.addOrUpdateItem(serial, repairedItem)
                                 }

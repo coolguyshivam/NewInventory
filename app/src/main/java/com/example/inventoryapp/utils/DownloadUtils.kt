@@ -32,7 +32,7 @@ suspend fun downloadImageToGallery(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = Manifest.permission.READ_MEDIA_IMAGES
             if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                onDownloadError("Missing permission: READ_MEDIA_IMAGES")
+                onDownloadError("Media permission denied. Please enable 'Photos and videos' permission in app settings to download images.")
                 return@withContext
             }
         }
@@ -40,7 +40,7 @@ suspend fun downloadImageToGallery(
         else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             val permission = Manifest.permission.WRITE_EXTERNAL_STORAGE
             if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                onDownloadError("Missing permission: WRITE_EXTERNAL_STORAGE")
+                onDownloadError("Storage permission denied. Please enable storage permission in app settings to download images.")
                 return@withContext
             }
         }

@@ -41,7 +41,7 @@ class ImagePickerHandler(
             setCameraImageUri?.invoke(uri)
             cameraLauncher?.launch(uri) ?: onCameraDenied("Camera launcher not initialized")
         } catch (e: Exception) {
-            onCameraDenied("Failed to launch camera: ${e.message}")
+            onCameraDenied("Camera permission denied. Please enable camera permission in app settings and try again.")
         }
     }
 }

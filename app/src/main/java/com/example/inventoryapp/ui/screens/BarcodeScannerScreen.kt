@@ -116,6 +116,21 @@ fun BarcodeScannerScreen(
                 .padding(8.dp)
                 .padding(paddingValues)
         ) {
+            // Header to indicate this is the barcode scanner view
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Text(
+                    text = "📱 Barcode Scanner View - Search inventory by scanning or typing IMEI/Serial numbers",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            
             OutlinedTextField(
                 value = filterText,
                 onValueChange = {

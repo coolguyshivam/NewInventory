@@ -176,15 +176,9 @@ class FirebaseInventoryRepository(
 
     // --- Added for repair/return logic ---
     override suspend fun isSerialInRepair(serial: String): Boolean {
-        // Get last transaction for serial
-        val txSnapshot = db.collection("transactions")
-            .whereEqualTo("serial", serial)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(1)
-            .get()
-            .await()
-        val lastTx = txSnapshot.documents.firstOrNull()?.toObject<Transaction>()
-        val isInInventory = getItemBySerial(serial) != null
-        return (lastTx?.type == "Repair") && !isInInventory
+        // Check if the item is in inventory and marked as in repair
+        val item = getItemBySerial(serial)
+        return item?.isInRepair == true
+    }
     }
 }
