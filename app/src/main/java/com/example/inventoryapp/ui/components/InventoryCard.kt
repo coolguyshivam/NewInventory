@@ -22,8 +22,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import com.example.inventoryapp.model.InventoryItem
+import com.example.inventoryapp.model.ItemStatus
 import com.example.inventoryapp.model.UserRole
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -36,6 +40,8 @@ fun InventoryCard(
     onAddTransaction: () -> Unit,
     onViewHistory: () -> Unit,
     onArchive: () -> Unit = {},
+    onMarkRepair: () -> Unit = {},
+    onReturn: () -> Unit = {},
     onSelectionChange: ((Boolean) -> Unit)? = null,
     isSelected: Boolean = false,
     modifier: Modifier = Modifier,
@@ -50,25 +56,26 @@ fun InventoryCard(
         if (item.date.isNotEmpty()) item.date else "-"
     }
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .animateContentSize()
-            .combinedClickable(
-                onClick = {
-                    expanded = !expanded
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                    onClick()
-                },
-                onLongClick = {
-                    onSelectionChange?.let { it(!isSelected) }
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                },
-                role = Role.Button
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+                .animateContentSize()
+                .combinedClickable(
+                    onClick = {
+                        expanded = !expanded
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onClick()
+                    },
+                    onLongClick = {
+                        onSelectionChange?.let { it(!isSelected) }
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    },
+                    role = Role.Button
+                ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // --- IMAGES ---
             if (imageUrls.isNotEmpty()) {
@@ -118,12 +125,37 @@ fun InventoryCard(
                             }
                         )
                         if (userRole == UserRole.ADMIN) {
+                            // Mark as Repair (only if available)
+                            if (item.canMarkRepair()) {
+                                DropdownMenuItem(
+                                    text = { Text("Mark as In Repair") },
+                                    onClick = {
+                                        showMenu = false
+                                        onMarkRepair()
+                                    }
+                                )
+                            }
+                            
+                            // Return action (if in repair or sold)
+                            if (item.canReturn()) {
+                                DropdownMenuItem(
+                                    text = { Text("Return to Available") },
+                                    onClick = {
+                                        showMenu = false
+                                        onReturn()
+                                    }
+                                )
+                            }
+                            
                             DropdownMenuItem(
                                 text = { Text("Delete") },
                                 onClick = {
                                     showMenu = false
-                                    onDelete()
-                                }
+                                    if (item.canDelete()) {
+                                        onDelete()
+                                    }
+                                },
+                                enabled = item.canDelete()
                             )
                             DropdownMenuItem(
                                 text = { Text("Archive") },
@@ -145,15 +177,44 @@ fun InventoryCard(
                 Text(text = if (item.description.isNotBlank()) item.description else "No description")
                 Row {
                     if (userRole == UserRole.ADMIN || userRole == UserRole.OPERATOR) {
-                        Button(onClick = onAddTransaction) {
+                        Button(
+                            onClick = onAddTransaction,
+                            modifier = Modifier.testTag("addTransactionButton"),
+                            enabled = item.canSell()
+                        ) {
                             Text("Add Transaction")
                         }
                         Spacer(Modifier.width(8.dp))
                     }
-                    Button(onClick = onViewHistory) {
+                    Button(
+                        onClick = onViewHistory,
+                        modifier = Modifier.testTag("historyButton")
+                    ) {
                         Text("History")
                     }
                 }
+            }
+        }
+        
+        // Repair Mode Badge Overlay
+        if (item.status == ItemStatus.REPAIR || item.isInRepair) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp)
+                    .zIndex(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Red
+                ),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = "REPAIR MODE",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

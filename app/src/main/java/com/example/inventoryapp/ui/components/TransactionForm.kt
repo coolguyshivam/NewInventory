@@ -333,7 +333,10 @@ fun TransactionForm(
                     .focusRequester(serialFocus),
                 singleLine = true,
                 trailingIcon = {
-                    IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                    IconButton(
+                        onClick = { navController.navigate("barcode_reader") },
+                        modifier = Modifier.testTag("barcodeIcon")
+                    ) {
                         Icon(
                             Icons.Filled.QrCodeScanner,
                             contentDescription = "Scan Barcode",

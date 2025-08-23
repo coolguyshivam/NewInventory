@@ -128,7 +128,7 @@ fun InventoryScreen(
                         IconButton(onClick = { filterDialogVisible = true }) {
                             Icon(Icons.Default.FilterList, contentDescription = "Filter")
                         }
-                        IconButton(onClick = { navController.navigate("barcode_scanner") }) {
+                        IconButton(onClick = { navController.navigate("barcode_reader") }) {
                             Icon(Icons.Default.QrCodeScanner, contentDescription = "Barcode")
                         }
                         IconButton(onClick = { viewModel.loadInventory() }) {
@@ -161,18 +161,60 @@ fun InventoryScreen(
                             onEdit = { /* implement if needed */ },
                             onDelete = {
                                 scope.launch {
-                                    val result = inventoryRepo.deleteItem(item.serial)
-                                    if (result is com.example.inventoryapp.data.Result.Success) {
-                                        viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item deleted")
-                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                    // First create DELETE transaction, then delete item
+                                    val deleteResult = inventoryRepo.createDeleteTransaction(
+                                        serial = item.serial,
+                                        item = item,
+                                        deletedBy = "Admin" // TODO: Get actual user from auth context
+                                    )
+                                    
+                                    if (deleteResult is com.example.inventoryapp.data.Result.Success) {
+                                        val result = inventoryRepo.deleteItem(item.serial)
+                                        if (result is com.example.inventoryapp.data.Result.Success) {
+                                            viewModel.loadInventory()
+                                            snackbarHostState.showSnackbar("Item deleted")
+                                        } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                            snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                        }
+                                    } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
                                     }
                                 }
                             },
-                            onAddTransaction = { /* implement if needed */ },
-                            onViewHistory = { /* implement if needed */ },
+                            onAddTransaction = { 
+                                // Navigate to transaction screen with prefilled data
+                                navController.navigate("transaction_screen?type=Sale&serial=${item.serial}&model=${item.model}")
+                            },
+                            onViewHistory = { 
+                                // Navigate to transaction history filtered by serial
+                                navController.navigate("transaction_history")
+                                // TODO: Add serial filter parameter
+                            },
                             onArchive = { /* archive not used */ },
+                            onMarkRepair = {
+                                scope.launch {
+                                    val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
+                                    val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
+                                    if (result is com.example.inventoryapp.data.Result.Success) {
+                                        viewModel.loadInventory()
+                                        snackbarHostState.showSnackbar("Item marked as in repair")
+                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to mark as repair")
+                                    }
+                                }
+                            },
+                            onReturn = {
+                                scope.launch {
+                                    val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.AVAILABLE)
+                                    val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
+                                    if (result is com.example.inventoryapp.data.Result.Success) {
+                                        viewModel.loadInventory()
+                                        snackbarHostState.showSnackbar("Item returned to available")
+                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to return item")
+                                    }
+                                }
+                            },
                             onSelectionChange = { checked: Boolean ->
                                 selectedSerials = if (checked) selectedSerials + item.serial else selectedSerials - item.serial
                             },

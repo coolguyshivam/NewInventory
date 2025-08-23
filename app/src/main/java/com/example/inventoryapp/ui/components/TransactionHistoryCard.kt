@@ -31,6 +31,15 @@ fun TransactionHistoryCard(
             )
             Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
             Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
+            
+            // Show deletion info for DELETE transactions
+            if (transaction.type.uppercase() == "DELETE" && transaction.deletedInfo != null) {
+                Text(
+                    "Deleted by: ${transaction.deletedInfo.deletedBy} at ${transaction.deletedInfo.deletedAt}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (backgroundColor == Color(0xFFE53E3E)) Color.White else Color.Red
+                )
+            }
         }
     }
 }

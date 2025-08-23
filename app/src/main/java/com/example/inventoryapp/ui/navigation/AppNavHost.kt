@@ -22,6 +22,7 @@ import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.model.InventoryViewModel
 import com.example.inventoryapp.ui.screens.*
 import com.example.inventoryapp.ui.screens.BarcodeScannerScreen
+import com.example.inventoryapp.ui.screens.BarcodeReaderScreen
 
 sealed class MainScreen(val route: String, val label: String, val icon: ImageVector) {
     object Inventory : MainScreen("inventory", "Inventory", Icons.AutoMirrored.Filled.List)
@@ -143,7 +144,7 @@ fun AppNavHost(
                     inventoryRepo = inventoryRepo,
                     navController = navController,
                     userRole = userRole,
-                    navToBarcodeScanner = { navController.navigate("barcode_scanner") }
+                    navToBarcodeScanner = { navController.navigate("barcode_reader") }
                 )
             }
             composable("barcode_scanner") {
@@ -151,6 +152,10 @@ fun AppNavHost(
                 // Pass all required parameters to BarcodeScannerScreen!
                 val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.provideFactory(inventoryRepo, userRole))
                 BarcodeScannerScreen(navController, inventoryViewModel, inventoryRepo)
+            }
+            composable("barcode_reader") {
+                showBottomBar = false
+                BarcodeReaderScreen(navController = navController)
             }
         }
     }
