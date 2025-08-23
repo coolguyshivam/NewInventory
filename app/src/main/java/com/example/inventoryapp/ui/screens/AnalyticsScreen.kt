@@ -129,7 +129,7 @@ fun AnalyticsScreen(
             Text("Total Repairs: ₹$totalRepairs", color = Color(0xFFFFA726), fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
 
-            Divider()
+            HorizontalDivider()
 
             LazyColumn {
                 items(filtered) { tx ->
