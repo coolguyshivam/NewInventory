@@ -2,6 +2,9 @@ package com.example.inventoryapp.ui.components
 
 import android.app.DatePickerDialog
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.Image
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -72,6 +76,7 @@ fun TransactionForm(
     var type by remember { mutableStateOf(prefillType ?: transactionTypes.first()) }
     var serial by remember { mutableStateOf(prefillSerial ?: "") }
     var model by remember { mutableStateOf(prefillModel ?: "") }
+    var customerName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var aadhaar by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
@@ -83,11 +88,13 @@ fun TransactionForm(
 
     var serialError by remember { mutableStateOf<String?>(null) }
     var modelError by remember { mutableStateOf<String?>(null) }
+    var customerNameError by remember { mutableStateOf<String?>(null) }
     var amountError by remember { mutableStateOf<String?>(null) }
     var imageLimitError by remember { mutableStateOf<String?>(null) }
 
     val serialFocus = remember { FocusRequester() }
     val modelFocus = remember { FocusRequester() }
+    val customerNameFocus = remember { FocusRequester() }
     val phoneFocus = remember { FocusRequester() }
     val aadhaarFocus = remember { FocusRequester() }
     val amountFocus = remember { FocusRequester() }
@@ -137,6 +144,42 @@ fun TransactionForm(
         )
     }
 
+    // Setup gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            if (images.size + uris.size > maxImages) {
+                imageLimitError = "You can select up to $maxImages images per transaction."
+            } else {
+                images = images + uris.take(maxImages - images.size)
+                imageLimitError = null
+            }
+        }
+    }
+
+    // Setup camera launcher
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            if (images.size < maxImages) {
+                images = images + cameraImageUri!!
+                imageLimitError = null
+            } else {
+                imageLimitError = "You can select up to $maxImages images per transaction."
+            }
+        }
+    }
+
+    // Update imagePickerHandler to use cameraImageUri
+    LaunchedEffect(Unit) {
+        imagePickerHandler.setupLaunchers(galleryLauncher, cameraLauncher) { uri ->
+            cameraImageUri = uri
+        }
+    }
+
     if (galleryDeniedReason != null) {
         LaunchedEffect(galleryDeniedReason) {
             snackbarHostState.showSnackbar(galleryDeniedReason!!)
@@ -164,6 +207,17 @@ fun TransactionForm(
                     model = item.model
                 }
             }
+        }
+    }
+
+    // Handle barcode scanner result
+    val scannedSerialLive = navController.currentBackStackEntry?.savedStateHandle?.getLiveData<String>("scannedSerial")
+    val scannedSerialState = scannedSerialLive?.observeAsState()
+    val scannedSerialResult = scannedSerialState?.value
+    LaunchedEffect(scannedSerialResult) {
+        scannedSerialResult?.let { scannedSerial ->
+            serial = scannedSerial
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("scannedSerial")
         }
     }
 
@@ -312,7 +366,7 @@ fun TransactionForm(
                 isError = modelError != null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
-                    onNext = { phoneFocus.requestFocus() }
+                    onNext = { customerNameFocus.requestFocus() }
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -344,6 +398,27 @@ fun TransactionForm(
                     }
                 }
             }
+
+            OutlinedTextField(
+                value = customerName,
+                onValueChange = {
+                    customerName = it
+                    customerNameError = null
+                },
+                label = { Text("Customer Name") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(customerNameFocus),
+                singleLine = true,
+                enabled = canEdit && !loading && !uploading,
+                isError = customerNameError != null,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { phoneFocus.requestFocus() }
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            customerNameError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
 
             OutlinedTextField(
                 value = phone,
@@ -483,7 +558,7 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 32.dp)
+                    modifier = Modifier.padding(bottom = 80.dp)
                 ) {
                     ListItem(
                         headlineContent = { Text("Take Photo") },
@@ -589,6 +664,7 @@ fun TransactionForm(
                             val transaction = Transaction(
                                 serial = serial,
                                 model = model,
+                                customerName = customerName,
                                 phone = phone,
                                 aadhaar = aadhaar,
                                 amount = amountDouble ?: 0.0,
@@ -680,6 +756,7 @@ fun TransactionForm(
                                 snackbarHostState.showSnackbar("Transaction saved successfully!")
                                 serial = ""
                                 model = ""
+                                customerName = ""
                                 phone = ""
                                 aadhaar = ""
                                 amount = ""

@@ -2,12 +2,11 @@ package com.example.inventoryapp.ui.components
 
 import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.ManagedActivityResultLauncher
-import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
+import com.example.inventoryapp.utils.ImageUtils
 
 class ImagePickerHandler(
     val context: Context,
@@ -17,16 +16,32 @@ class ImagePickerHandler(
     val onImagesSelected: (List<Uri>) -> Unit,
     val onImageCaptured: (Uri) -> Unit
 ) {
-    // Implement your logic for launching gallery and camera here.
-    // This is a stub for illustration; you need to create actual launchers in your Composable.
+    private var galleryLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>? = null
+    private var cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>? = null
+    private var setCameraImageUri: ((Uri) -> Unit)? = null
+    
+    fun setupLaunchers(
+        galleryLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>,
+        cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>,
+        setCameraImageUri: (Uri) -> Unit
+    ) {
+        this.galleryLauncher = galleryLauncher
+        this.cameraLauncher = cameraLauncher
+        this.setCameraImageUri = setCameraImageUri
+    }
+    
     fun launchGallery() {
-        // TODO: Launch gallery picker and call onImagesSelected
-        // Use Compose's rememberLauncherForActivityResult in your composable file.
-        onGalleryDenied("Gallery picker not implemented")
+        galleryLauncher?.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            ?: onGalleryDenied("Gallery launcher not initialized")
     }
 
     fun launchCamera() {
-        // TODO: Launch camera and call onImageCaptured
-        onCameraDenied("Camera picker not implemented")
+        try {
+            val uri = ImageUtils.createCameraImageUri(context)
+            setCameraImageUri?.invoke(uri)
+            cameraLauncher?.launch(uri) ?: onCameraDenied("Camera launcher not initialized")
+        } catch (e: Exception) {
+            onCameraDenied("Failed to launch camera: ${e.message}")
+        }
     }
 }
