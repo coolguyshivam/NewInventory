@@ -42,7 +42,7 @@ import androidx.compose.animation.AnimatedVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventoryScreen(
+fun BarcodeScannerScreen(
     navController: NavController,
     viewModel: InventoryViewModel,
     inventoryRepo: com.example.inventoryapp.data.InventoryRepository

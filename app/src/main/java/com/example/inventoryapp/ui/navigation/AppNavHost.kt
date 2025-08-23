@@ -148,7 +148,9 @@ fun AppNavHost(
             }
             composable("barcode_scanner") {
                 showBottomBar = false
-                BarcodeScannerScreen(navController)
+                // Pass all required parameters to BarcodeScannerScreen!
+                val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.provideFactory(inventoryRepo, userRole))
+                BarcodeScannerScreen(navController, inventoryViewModel, inventoryRepo)
             }
         }
     }
