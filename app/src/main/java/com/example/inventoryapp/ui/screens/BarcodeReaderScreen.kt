@@ -1,7 +1,5 @@
 package com.example.inventoryapp.ui.screens
 
-@file:OptIn(kotlin.ExperimentalStdlibApi::class)
-
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
