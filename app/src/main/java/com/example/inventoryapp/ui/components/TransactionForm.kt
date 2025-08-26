@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -561,24 +562,26 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 120.dp)
                 ) {
-                    ListItem(
-                        headlineContent = { Text("Take Photo") },
-                        leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            imagePickerHandler.launchCamera()
-                        }
-                    )
-                    ListItem(
-                        headlineContent = { Text("Choose from Gallery") },
-                        leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            imagePickerHandler.launchGallery()
-                        }
-                    )
+                    Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                        ListItem(
+                            headlineContent = { Text("Take Photo") },
+                            leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                imagePickerHandler.launchCamera()
+                            }
+                        )
+                        ListItem(
+                            headlineContent = { Text("Choose from Gallery") },
+                            leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                imagePickerHandler.launchGallery()
+                            }
+                        )
+                    }
                 }
             }
 
