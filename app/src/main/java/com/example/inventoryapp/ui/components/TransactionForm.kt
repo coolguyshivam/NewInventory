@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -531,8 +532,7 @@ fun TransactionForm(
             if (imageSourceSheetOpen) {
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
-                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    contentWindowInsets = WindowInsets(0)
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 ) {
                     Column(
                         modifier = Modifier
