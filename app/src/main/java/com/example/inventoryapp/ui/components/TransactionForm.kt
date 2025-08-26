@@ -119,34 +119,9 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    val imagePickerHandler = remember(context) {
-        ImagePickerHandler(
-            context = context,
-            maxImages = maxImages,
-            onGalleryDenied = { galleryDeniedReason = it },
-            onCameraDenied = { cameraDeniedReason = it },
-            onImagesSelected = { uris ->
-                if (images.size + uris.size > maxImages) {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                } else {
-                    images = images + uris.take(maxImages - images.size)
-                    imageLimitError = null
-                }
-            },
-            onImageCaptured = { uri ->
-                if (images.size < maxImages) {
-                    images = images + uri
-                    imageLimitError = null
-                } else {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                }
-            }
-        )
-    }
-
-    // Setup gallery launcher
+    // Setup gallery launcher for multiple image selection
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickMultipleVisualMedia()
+        ActivityResultContracts.PickMultipleVisualMedia(maxImages)
     ) { uris ->
         if (uris.isNotEmpty()) {
             if (images.size + uris.size > maxImages) {
@@ -173,10 +148,22 @@ fun TransactionForm(
         }
     }
 
-    // Update imagePickerHandler to use cameraImageUri
-    LaunchedEffect(Unit) {
-        imagePickerHandler.setupLaunchers(galleryLauncher, cameraLauncher) { uri ->
+    // Helper functions for launching image pickers
+    fun launchGallery() {
+        try {
+            galleryLauncher.launch(maxImages - images.size)
+        } catch (e: Exception) {
+            galleryDeniedReason = "Failed to open gallery: ${e.message}"
+        }
+    }
+
+    fun launchCamera() {
+        try {
+            val uri = ImageUtils.createCameraImageUri(context)
             cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            cameraDeniedReason = "Failed to launch camera: ${e.message}"
         }
     }
 
@@ -561,14 +548,14 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 120.dp)
                 ) {
                     ListItem(
                         headlineContent = { Text("Take Photo") },
                         leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
                         modifier = Modifier.clickable {
                             imageSourceSheetOpen = false
-                            imagePickerHandler.launchCamera()
+                            launchCamera()
                         }
                     )
                     ListItem(
@@ -576,7 +563,7 @@ fun TransactionForm(
                         leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
                         modifier = Modifier.clickable {
                             imageSourceSheetOpen = false
-                            imagePickerHandler.launchGallery()
+                            launchGallery()
                         }
                     )
                 }
