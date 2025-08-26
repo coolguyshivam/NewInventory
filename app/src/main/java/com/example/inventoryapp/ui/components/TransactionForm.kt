@@ -173,11 +173,9 @@ fun TransactionForm(
         }
     }
 
-    // Update imagePickerHandler to use cameraImageUri
-    LaunchedEffect(Unit) {
-        imagePickerHandler.setupLaunchers(galleryLauncher, cameraLauncher) { uri ->
-            cameraImageUri = uri
-        }
+    // Update imagePickerHandler to use cameraImageUri - do this immediately, not in LaunchedEffect
+    imagePickerHandler.setupLaunchers(galleryLauncher, cameraLauncher) { uri ->
+        cameraImageUri = uri
     }
 
     if (galleryDeniedReason != null) {
@@ -561,7 +559,7 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 120.dp)
                 ) {
                     ListItem(
                         headlineContent = { Text("Take Photo") },

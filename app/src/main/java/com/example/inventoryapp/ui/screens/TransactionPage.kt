@@ -457,7 +457,7 @@ fun TransactionPage(
                         ModalBottomSheet(
                             onDismissRequest = { imageSourceSheetOpen = false },
                             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                            modifier = Modifier.padding(bottom = 32.dp)
+                            modifier = Modifier.padding(bottom = 120.dp)
                         ) {
                             ListItem(
                                 headlineContent = { Text("Take Photo") },

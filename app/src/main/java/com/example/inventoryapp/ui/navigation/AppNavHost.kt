@@ -163,12 +163,7 @@ fun AppNavHost(
                     filterBySerial = serial
                 )
             }
-            composable("barcode_scanner") {
-                showBottomBar = false
-                // Pass all required parameters to BarcodeScannerScreen!
-                val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.provideFactory(inventoryRepo, userRole))
-                BarcodeScannerScreen(navController, inventoryViewModel, inventoryRepo)
-            }
+
             composable("barcode_reader") {
                 showBottomBar = false
                 BarcodeReaderScreen(navController = navController)
