@@ -38,6 +38,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import coil.compose.rememberAsyncImagePainter
 import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
@@ -119,31 +122,6 @@ fun TransactionForm(
     val maxImages = 10
     var imageSourceSheetOpen by remember { mutableStateOf(false) }
 
-    val imagePickerHandler = remember(context) {
-        ImagePickerHandler(
-            context = context,
-            maxImages = maxImages,
-            onGalleryDenied = { galleryDeniedReason = it },
-            onCameraDenied = { cameraDeniedReason = it },
-            onImagesSelected = { uris ->
-                if (images.size + uris.size > maxImages) {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                } else {
-                    images = images + uris.take(maxImages - images.size)
-                    imageLimitError = null
-                }
-            },
-            onImageCaptured = { uri ->
-                if (images.size < maxImages) {
-                    images = images + uri
-                    imageLimitError = null
-                } else {
-                    imageLimitError = "You can select up to $maxImages images per transaction."
-                }
-            }
-        )
-    }
-
     // Setup gallery launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
@@ -170,13 +148,6 @@ fun TransactionForm(
             } else {
                 imageLimitError = "You can select up to $maxImages images per transaction."
             }
-        }
-    }
-
-    // Update imagePickerHandler to use cameraImageUri
-    LaunchedEffect(Unit) {
-        imagePickerHandler.setupLaunchers(galleryLauncher, cameraLauncher) { uri ->
-            cameraImageUri = uri
         }
     }
 
@@ -561,24 +532,33 @@ fun TransactionForm(
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    contentWindowInsets = WindowInsets(0)
                 ) {
-                    ListItem(
-                        headlineContent = { Text("Take Photo") },
-                        leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            imagePickerHandler.launchCamera()
-                        }
-                    )
-                    ListItem(
-                        headlineContent = { Text("Choose from Gallery") },
-                        leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            imagePickerHandler.launchGallery()
-                        }
-                    )
+                    Column(
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .imePadding()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("Take Photo") },
+                            leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                val uri = ImageUtils.createCameraImageUri(context)
+                                cameraImageUri = uri
+                                cameraLauncher.launch(uri)
+                            }
+                        )
+                        ListItem(
+                            headlineContent = { Text("Choose from Gallery") },
+                            leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        )
+                    }
                 }
             }
 
