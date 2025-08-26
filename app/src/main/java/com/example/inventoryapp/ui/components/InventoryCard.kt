@@ -218,4 +218,4 @@ fun InventoryCard(
             }
         }
     }
-}
+}}
