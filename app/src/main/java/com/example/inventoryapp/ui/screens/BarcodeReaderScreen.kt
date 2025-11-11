@@ -320,11 +320,8 @@ private fun BarcodeCamera(
                         try {
                             val barcodeResults = result.getValue(barcodeScanner)
                             if (barcodeResults != null && barcodeResults.isNotEmpty()) {
-                                for (barcode in barcodeResults) {
-                                    barcode.rawValue?.let { value ->
-                                        onBarcodeDetected(value)
-                                        break
-                                    }
+                                barcodeResults.firstOrNull()?.rawValue?.let { value ->
+                                    onBarcodeDetected(value)
                                 }
                             }
                         } catch (_: Exception) {
