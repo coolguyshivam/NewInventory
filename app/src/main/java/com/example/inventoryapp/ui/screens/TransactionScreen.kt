@@ -49,14 +49,6 @@ fun TransactionScreen(
         else -> listOf("serial", "model", "amount", "date")
     }
 
-    // Error boundary: check if repo is null or invalid
-    if (inventoryRepo == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Error: Inventory repo not available.", color = MaterialTheme.colorScheme.error)
-        }
-        return
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
