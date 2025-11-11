@@ -1,18 +1,19 @@
 package com.example.inventoryapp.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.mlkit.vision.MlKitAnalyzer
-import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -36,8 +38,11 @@ import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
+import androidx.camera.mlkit.vision.MlKitAnalyzer
+import androidx.camera.view.CameraController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
@@ -53,33 +58,47 @@ fun BarcodeReaderScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
-    
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        )
-    }
+
+    // Permission state — initialize as false and check in LaunchedEffect to avoid surprising behavior
+    var hasCameraPermission by remember { mutableStateOf(false) }
+    var showRetryButton by remember { mutableStateOf(false) }
     var scannedCode by remember { mutableStateOf<String?>(null) }
     var isValidIMEI by remember { mutableStateOf(false) }
-    var showRetryButton by remember { mutableStateOf(false) }
     var continuousMode by remember { mutableStateOf(false) }
-    
-    val snackbarHostState = remember { SnackbarHostState() }
-    
+
+    // Background executor for analysis
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    // Launcher for permission request
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
         showRetryButton = !isGranted
     }
-    
-    // Initialize camera permission request
-    LaunchedEffect(Unit) {
+
+    // Safe initial permission check
+    LaunchedEffect(key1 = context) {
+        hasCameraPermission =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         if (!hasCameraPermission) {
+            // Try to request permission (this will show system dialog)
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
-    
+
+    // Shutdown executor when leaving screen
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                cameraExecutor.shutdown()
+            } catch (_: Exception) { }
+        }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val clipboardManager = LocalClipboardManager.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -100,7 +119,7 @@ fun BarcodeReaderScreen(
         ) {
             when {
                 !hasCameraPermission -> {
-                    // Permission denied state
+                    // Permission denied / request UI
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -113,127 +132,89 @@ fun BarcodeReaderScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
-                        ) {
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
                             Text("Grant Camera Permission")
+                        }
+                        if (showRetryButton) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(onClick = {
+                                // Open app settings for manual permission granting (covers permanent denial)
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            }) {
+                                Text("Open Settings")
+                            }
                         }
                     }
                 }
-                
+
                 scannedCode != null -> {
-                    // Show scanned result
+                    // Show scanned result and actions
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isValidIMEI) 
-                                    MaterialTheme.colorScheme.primaryContainer 
-                                else 
-                                    MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    if (isValidIMEI) "Valid IMEI Detected!" else "Barcode Scanned",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isValidIMEI) 
-                                        MaterialTheme.colorScheme.onPrimaryContainer 
-                                    else 
-                                        MaterialTheme.colorScheme.onErrorContainer
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    scannedCode!!,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (isValidIMEI) 
-                                        MaterialTheme.colorScheme.onPrimaryContainer 
-                                    else 
-                                        MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.testTag("imeiValue")
-                                )
-                                if (!isValidIMEI && scannedCode!!.length == 15) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        "Invalid IMEI checksum",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
+                        Text("Scanned Code", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            scannedCode ?: "",
+                            modifier = Modifier.testTag("imeiValue"),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                // copy to clipboard
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(scannedCode ?: ""))
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Copied to clipboard")
                                 }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    // Copy to clipboard
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("IMEI", scannedCode)
-                                    clipboard.setPrimaryClip(clip)
-                                    
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Copied to clipboard!")
-                                    }
-                                }
-                            ) {
+                            }) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(Modifier.width(4.dp))
                                 Text("Copy")
                             }
-                            
-                            Button(
-                                onClick = {
-                                    // Return the scanned code
-                                    onBarcodeScanned?.invoke(scannedCode!!)
-                                    navController.previousBackStackEntry?.savedStateHandle?.set("scannedSerial", scannedCode)
-                                    navController.popBackStack()
+
+                            Button(onClick = {
+                                // Return the scanned code to caller and previous nav entry
+                                scannedCode?.let { code ->
+                                    try {
+                                        onBarcodeScanned?.invoke(code)
+                                        navController.previousBackStackEntry?.savedStateHandle?.set("scannedSerial", code)
+                                    } catch (_: Exception) { }
                                 }
-                            ) {
+                                navController.popBackStack()
+                            }) {
                                 Text("Use Code")
                             }
                         }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    scannedCode = null
-                                    // Continue scanning
-                                }
-                            ) {
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                scannedCode = null
+                            }) {
                                 Text("Scan Another")
                             }
-                            
-                            OutlinedButton(
-                                onClick = {
-                                    continuousMode = !continuousMode
-                                    scannedCode = null
-                                }
-                            ) {
+
+                            OutlinedButton(onClick = {
+                                continuousMode = !continuousMode
+                                scannedCode = null
+                            }) {
                                 Text(if (continuousMode) "Single Mode" else "Continuous Mode")
                             }
                         }
                     }
                 }
-                
+
                 else -> {
                     // Camera preview with scanner
                     Box(
@@ -244,14 +225,15 @@ fun BarcodeReaderScreen(
                         BarcodeCamera(
                             modifier = Modifier.fillMaxSize(),
                             lifecycleOwner = lifecycleOwner,
+                            cameraExecutor = cameraExecutor,
                             onBarcodeDetected = { code ->
-                                if (scannedCode == null) { // Prevent multiple detections
+                                // Debounce and validate
+                                if (scannedCode == null) {
                                     scannedCode = code
                                     isValidIMEI = isValidIMEI(code)
-                                    
-                                    // Auto-continue if in continuous mode and not IMEI
+                                    // In continuousMode, auto clear non-IMEI scans
                                     if (continuousMode && !isValidIMEI) {
-                                        scope.launch {
+                                        scope.launch(Dispatchers.Default) {
                                             kotlinx.coroutines.delay(2000)
                                             scannedCode = null
                                         }
@@ -259,7 +241,7 @@ fun BarcodeReaderScreen(
                                 }
                             }
                         )
-                        
+
                         // Overlay instructions
                         Card(
                             modifier = Modifier
@@ -276,16 +258,16 @@ fun BarcodeReaderScreen(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
-                        
+
                         // Mode indicator
                         Card(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(16.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (continuousMode) 
+                                containerColor = if (continuousMode)
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                else 
+                                else
                                     Color.Black.copy(alpha = 0.7f)
                             )
                         ) {
@@ -303,81 +285,84 @@ fun BarcodeReaderScreen(
     }
 }
 
+/**
+ * Composable hosting the camera preview and the MLKit analyzer.
+ */
 @Composable
 private fun BarcodeCamera(
     modifier: Modifier = Modifier,
     lifecycleOwner: LifecycleOwner,
+    cameraExecutor: ExecutorService,
     onBarcodeDetected: (String) -> Unit
 ) {
     val context = LocalContext.current
-    
+
     AndroidView(
+        modifier = modifier,
         factory = { ctx ->
             val previewView = PreviewView(ctx)
             val cameraController = LifecycleCameraController(ctx)
-            
-            // Configure barcode scanner
+
+            // Configure barcode scanner options
             val options = BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(
-                    Barcode.FORMAT_ALL_FORMATS
-                )
+                .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
                 .build()
-            
             val barcodeScanner = BarcodeScanning.getClient(options)
-            
-            cameraController.setImageAnalysisAnalyzer(
-                ContextCompat.getMainExecutor(ctx),
-                MlKitAnalyzer(
-                    listOf(barcodeScanner),
-                    CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED,
-                    ContextCompat.getMainExecutor(ctx)
-                ) { result ->
-                    val barcodeResults = result.getValue(barcodeScanner)
-                    if (barcodeResults != null && barcodeResults.isNotEmpty()) {
-                        for (barcode in barcodeResults) {
-                            barcode.rawValue?.let { value ->
-                                onBarcodeDetected(value)
-                                break // Take first valid barcode
+
+            try {
+                cameraController.setImageAnalysisAnalyzer(
+                    cameraExecutor,
+                    MlKitAnalyzer(
+                        listOf(barcodeScanner),
+                        CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED,
+                        cameraExecutor
+                    ) { result ->
+                        try {
+                            val barcodeResults = result.getValue(barcodeScanner)
+                            if (barcodeResults != null && barcodeResults.isNotEmpty()) {
+                                for (barcode in barcodeResults) {
+                                    barcode.rawValue?.let { value ->
+                                        onBarcodeDetected(value)
+                                        break
+                                    }
+                                }
                             }
+                        } catch (_: Exception) {
+                            // swallow analysis exceptions — prevents crashes from malformed frames
                         }
                     }
-                }
-            )
-            
-            cameraController.bindToLifecycle(lifecycleOwner)
-            previewView.controller = cameraController
+                )
+
+                // Bind lifecycle safely — lifecycleOwner comes from parent composable
+                cameraController.bindToLifecycle(lifecycleOwner)
+                previewView.controller = cameraController
+            } catch (ex: Exception) {
+                // If binding fails, swallow and allow UI to show fallback
+            }
+
             previewView
         },
-        modifier = modifier
+        update = { /* no-op */ }
     )
 }
 
 /**
- * Validates IMEI using Luhn algorithm (modulo 10)
+ * Basic IMEI validation (Luhn check for 15-digit IMEI).
  */
-private fun isValidIMEI(imei: String): Boolean {
-    if (imei.length != 15 || !imei.all { it.isDigit() }) {
-        return false
-    }
-    
+private fun isValidIMEI(code: String?): Boolean {
+    if (code == null) return false
+    val digits = code.filter { it.isDigit() }
+    if (digits.length != 15) return false
+
+    // Luhn algorithm
     var sum = 0
-    var shouldDouble = false
-    
-    // Process digits from right to left (excluding check digit)
-    for (i in imei.length - 2 downTo 0) {
-        var digit = imei[i].digitToInt()
-        
-        if (shouldDouble) {
-            digit *= 2
-            if (digit > 9) {
-                digit = digit / 10 + digit % 10
-            }
+    for (i in digits.indices) {
+        var d = digits[digits.length - 1 - i].digitToInt()
+        if (i % 2 == 1) {
+            d *= 2
+            if (d > 9) d -= 9
         }
-        
-        sum += digit
-        shouldDouble = !shouldDouble
+        sum += d
     }
-    
-    val checkDigit = (10 - (sum % 10)) % 10
-    return checkDigit == imei.last().digitToInt()
+    return sum % 10 == 0
 }
