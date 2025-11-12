@@ -234,6 +234,7 @@ fun TransactionHistoryScreen(
                                 "repair" -> Color(0xFFFFA726)
                                 "repair return" -> Color(0xFF9C27B0)
                                 "return" -> Color(0xFFBDBDBD)
+                                "edit" -> Color(0xFF03A9F4) // Light blue for EDIT entries
                                 "delete" -> Color(0xFFE53E3E) // Red for DELETE entries
                                 else -> MaterialTheme.colorScheme.surface
                             }

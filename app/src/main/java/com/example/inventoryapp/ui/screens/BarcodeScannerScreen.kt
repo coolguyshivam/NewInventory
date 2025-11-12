@@ -61,6 +61,7 @@ fun BarcodeScannerScreen(
     val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var editingItem by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -158,7 +159,7 @@ fun BarcodeScannerScreen(
                             item = item,
                             userRole = role,
                             onClick = { selectedItem = item },
-                            onEdit = { /* implement if needed */ },
+                            onEdit = { editingItem = item },
                             onDelete = {
                                 scope.launch {
                                     if (!item.canDelete()) {
@@ -252,6 +253,40 @@ fun BarcodeScannerScreen(
                     text = { Text("Model: ${selectedItem?.model}\nSerial: ${selectedItem?.serial}\nQuantity: ${selectedItem?.quantity}\nDescription: ${selectedItem?.description}") },
                     confirmButton = {
                         Button(onClick = { selectedItem = null }) { Text("Close") }
+                    }
+                )
+            }
+            
+            // Edit Item Dialog
+            if (editingItem != null) {
+                AddEditItemDialog(
+                    originalItem = editingItem!!,
+                    onDismiss = { editingItem = null },
+                    onSave = { updatedItem ->
+                        scope.launch {
+                            val oldItem = editingItem!!
+                            // Log the edit transaction
+                            val logResult = inventoryRepo.createEditTransaction(
+                                serial = updatedItem.serial,
+                                oldItem = oldItem,
+                                newItem = updatedItem,
+                                editedBy = "Admin" // TODO: Get actual user from auth context
+                            )
+                            
+                            if (logResult is com.example.inventoryapp.data.Result.Success) {
+                                // Update the item
+                                val updateResult = inventoryRepo.addOrUpdateItem(updatedItem.serial, updatedItem)
+                                if (updateResult is com.example.inventoryapp.data.Result.Success) {
+                                    viewModel.loadInventory()
+                                    snackbarHostState.showSnackbar("Item updated successfully")
+                                    editingItem = null
+                                } else if (updateResult is com.example.inventoryapp.data.Result.Error) {
+                                    snackbarHostState.showSnackbar(updateResult.exception?.message ?: "Update failed")
+                                }
+                            } else if (logResult is com.example.inventoryapp.data.Result.Error) {
+                                snackbarHostState.showSnackbar("Failed to log edit: ${logResult.exception?.message}")
+                            }
+                        }
                     }
                 )
             }
