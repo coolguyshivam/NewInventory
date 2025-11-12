@@ -32,6 +32,9 @@ interface InventoryRepository {
     
     // --- Added for deletion logging ---
     suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit>
+    
+    // --- Added for edit logging ---
+    suspend fun createEditTransaction(serial: String, oldItem: InventoryItem, newItem: InventoryItem, editedBy: String): Result<Unit>
 }
 
 // --- Firebase implementation ---
@@ -215,6 +218,40 @@ class FirebaseInventoryRepository(
         )
         
         db.collection("transactions").add(deleteTransaction).await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(e)
+    }
+    
+    override suspend fun createEditTransaction(serial: String, oldItem: InventoryItem, newItem: InventoryItem, editedBy: String): Result<Unit> = try {
+        // Create a description of what changed
+        val changes = mutableListOf<String>()
+        if (oldItem.name != newItem.name) changes.add("name: '${oldItem.name}' → '${newItem.name}'")
+        if (oldItem.model != newItem.model) changes.add("model: '${oldItem.model}' → '${newItem.model}'")
+        if (oldItem.description != newItem.description) changes.add("description changed")
+        if (oldItem.quantity != newItem.quantity) changes.add("quantity: ${oldItem.quantity} → ${newItem.quantity}")
+        if (oldItem.phone != newItem.phone) changes.add("phone: '${oldItem.phone}' → '${newItem.phone}'")
+        if (oldItem.aadhaar != newItem.aadhaar) changes.add("aadhaar changed")
+        if (oldItem.status != newItem.status) changes.add("status: ${oldItem.status} → ${newItem.status}")
+        
+        val editTransaction = Transaction(
+            id = "",
+            type = "EDIT",
+            model = newItem.model,
+            serial = serial,
+            customerName = "",
+            phoneNumber = "",
+            aadhaarNumber = "",
+            amount = 0.0,
+            quantity = 1,
+            description = "Item edited: ${changes.joinToString(", ")}",
+            date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
+            timestamp = System.currentTimeMillis(),
+            userRole = editedBy,
+            images = emptyList()
+        )
+        
+        db.collection("transactions").add(editTransaction).await()
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Error(e)

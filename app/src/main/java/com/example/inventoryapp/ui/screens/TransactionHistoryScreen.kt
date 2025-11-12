@@ -232,7 +232,9 @@ fun TransactionHistoryScreen(
                                 "sale" -> Color(0xFF4CAF50)
                                 "purchase" -> Color(0xFF2196F3)
                                 "repair" -> Color(0xFFFFA726)
+                                "repair return" -> Color(0xFF9C27B0)
                                 "return" -> Color(0xFFBDBDBD)
+                                "edit" -> Color(0xFF03A9F4) // Light blue for EDIT entries
                                 "delete" -> Color(0xFFE53E3E) // Red for DELETE entries
                                 else -> MaterialTheme.colorScheme.surface
                             }
@@ -255,7 +257,7 @@ fun TransactionHistoryScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Transaction Type", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                            val saleTypes = listOf("sale", "purchase", "return", "repair")
+                            val saleTypes = listOf("sale", "purchase", "repair", "repair return")
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(saleTypes) { type ->
                                     FilterChip(

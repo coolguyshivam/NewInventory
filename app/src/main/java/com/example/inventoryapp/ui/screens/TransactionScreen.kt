@@ -45,6 +45,7 @@ fun TransactionScreen(
         "sale" -> listOf("serial", "model", "amount", "date")
         "purchase" -> listOf("serial", "model", "amount", "date")
         "repair" -> listOf("serial", "model", "date")
+        "repair return" -> listOf("serial", "date")
         "return" -> listOf("serial", "date")
         else -> listOf("serial", "model", "amount", "date")
     }

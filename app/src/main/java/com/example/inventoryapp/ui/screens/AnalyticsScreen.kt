@@ -1,11 +1,14 @@
 package com.example.inventoryapp.ui.screens
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,15 +18,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.google.firebase.analytics.FirebaseAnalytics
-import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,8 +46,12 @@ fun AnalyticsScreen(
         return
     }
 
+    val context = LocalContext.current
     val transactions = remember { mutableStateListOf<Transaction>() }
-    val firebaseAnalytics = FirebaseAnalytics.getInstance(LocalContext.current)
+    val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
+    
+    var startDatePickerOpen by remember { mutableStateOf(false) }
+    var endDatePickerOpen by remember { mutableStateOf(false) }
 
     // Log when the analytics screen is viewed
     LaunchedEffect(Unit) {
@@ -96,6 +104,7 @@ fun AnalyticsScreen(
     val totalSales = filtered.filter { it.type.equals("Sale", true) }.sumOf { it.amount }
     val totalPurchases = filtered.filter { it.type.equals("Purchase", true) }.sumOf { it.amount }
     val totalRepairs = filtered.filter { it.type.equals("Repair", true) }.sumOf { it.amount }
+    val totalRepairReturns = filtered.filter { it.type.equals("Repair Return", true) }.sumOf { it.amount }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Analytics / Stats") }) }
@@ -120,13 +129,16 @@ fun AnalyticsScreen(
                 startDate = startDate,
                 onStartDateChange = { startDate = it },
                 endDate = endDate,
-                onEndDateChange = { endDate = it }
+                onEndDateChange = { endDate = it },
+                onStartDatePickerOpen = { startDatePickerOpen = true },
+                onEndDatePickerOpen = { endDatePickerOpen = true }
             )
 
             Spacer(Modifier.height(16.dp))
             Text("Total Sales: ₹$totalSales", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
             Text("Total Purchases: ₹$totalPurchases", color = Color(0xFF2196F3), fontWeight = FontWeight.Bold)
             Text("Total Repairs: ₹$totalRepairs", color = Color(0xFFFFA726), fontWeight = FontWeight.Bold)
+            Text("Total Repair Returns: ₹$totalRepairReturns", color = Color(0xFF9C27B0), fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
 
             HorizontalDivider()
@@ -136,6 +148,65 @@ fun AnalyticsScreen(
                     TransactionStatsCard(tx)
                 }
             }
+        }
+        
+        // Date Picker Dialogs
+        if (startDatePickerOpen) {
+            val calendar = Calendar.getInstance()
+            if (startDate.isNotBlank()) {
+                try {
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val parsed = sdf.parse(startDate)
+                    if (parsed != null) calendar.time = parsed
+                } catch (e: Exception) {
+                    // Use current date if parsing fails
+                }
+            }
+            DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    val selectedCal = Calendar.getInstance()
+                    selectedCal.set(year, month, dayOfMonth)
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    startDate = sdf.format(selectedCal.time)
+                    startDatePickerOpen = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+                setOnCancelListener { startDatePickerOpen = false }
+            }.show()
+        }
+        
+        if (endDatePickerOpen) {
+            val calendar = Calendar.getInstance()
+            if (endDate.isNotBlank()) {
+                try {
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val parsed = sdf.parse(endDate)
+                    if (parsed != null) calendar.time = parsed
+                } catch (e: Exception) {
+                    // Use current date if parsing fails
+                }
+            }
+            DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    val selectedCal = Calendar.getInstance()
+                    selectedCal.set(year, month, dayOfMonth)
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    endDate = sdf.format(selectedCal.time)
+                    endDatePickerOpen = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+                setOnCancelListener { endDatePickerOpen = false }
+            }.show()
         }
     }
 }
@@ -155,7 +226,9 @@ fun AnalyticsFilters(
     startDate: String,
     onStartDateChange: (String) -> Unit,
     endDate: String,
-    onEndDateChange: (String) -> Unit
+    onEndDateChange: (String) -> Unit,
+    onStartDatePickerOpen: () -> Unit,
+    onEndDatePickerOpen: () -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         DropdownMenuBox(
@@ -194,18 +267,32 @@ fun AnalyticsFilters(
     Row {
         OutlinedTextField(
             value = startDate,
-            onValueChange = onStartDateChange,
+            onValueChange = { },
             label = { Text("Start Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { startDatePickerOpen = true },
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { startDatePickerOpen = true }) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick Start Date")
+                }
+            }
         )
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedTextField(
             value = endDate,
-            onValueChange = onEndDateChange,
+            onValueChange = { },
             label = { Text("End Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { endDatePickerOpen = true },
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { endDatePickerOpen = true }) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick End Date")
+                }
+            }
         )
     }
 }
