@@ -28,6 +28,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.testTag
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -195,6 +196,7 @@ fun InventoryCard(
                 }
             }
         }
+        }
         
         // Repair Mode Badge Overlay
         if (item.status == ItemStatus.REPAIR || item.isInRepair) {
@@ -218,4 +220,4 @@ fun InventoryCard(
             }
         }
     }
-}}
+}

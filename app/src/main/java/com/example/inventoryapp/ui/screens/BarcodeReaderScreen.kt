@@ -18,7 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -105,7 +105,7 @@ fun BarcodeReaderScreen(
                 title = { Text("Barcode Scanner") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -314,17 +314,14 @@ private fun BarcodeCamera(
                     cameraExecutor,
                     MlKitAnalyzer(
                         listOf(barcodeScanner),
-                        CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED,
+                        CameraController.COORDINATE_SYSTEM_SENSOR,
                         cameraExecutor
                     ) { result ->
                         try {
                             val barcodeResults = result.getValue(barcodeScanner)
                             if (barcodeResults != null && barcodeResults.isNotEmpty()) {
-                                for (barcode in barcodeResults) {
-                                    barcode.rawValue?.let { value ->
-                                        onBarcodeDetected(value)
-                                        break
-                                    }
+                                barcodeResults.firstOrNull()?.rawValue?.let { value ->
+                                    onBarcodeDetected(value)
                                 }
                             }
                         } catch (_: Exception) {
