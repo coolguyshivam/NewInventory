@@ -1,5 +1,6 @@
 package com.example.inventoryapp.ui.screens
 
+import android.app.DatePickerDialog
 import android.content.Context
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +41,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.animation.AnimatedVisibility
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,10 +66,12 @@ fun InventoryScreen(
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
+    var datePickerOpen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     
     // Tab state: 0 = Main Inventory, 1 = Under Repair
     var selectedTab by remember { mutableStateOf(0) }
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
     var showPhotoViewer by remember { mutableStateOf(false) }
     var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -405,9 +411,17 @@ fun InventoryScreen(
                             )
                             OutlinedTextField(
                                 value = filters.date ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(date = it)) },
+                                onValueChange = { },
                                 label = { Text("Date (yyyy-MM-dd)") },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { datePickerOpen = true },
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { datePickerOpen = true }) {
+                                        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                                    }
+                                }
                             )
                         }
                     },
@@ -426,6 +440,35 @@ fun InventoryScreen(
                         }
                     }
                 )
+            }
+            
+            // Date Picker Dialog for filter
+            if (datePickerOpen) {
+                val calendar = Calendar.getInstance()
+                val currentDate = filters.date
+                if (!currentDate.isNullOrBlank()) {
+                    try {
+                        val parsed = dateFormat.parse(currentDate)
+                        if (parsed != null) calendar.time = parsed
+                    } catch (e: Exception) {
+                        // Use current date if parsing fails
+                    }
+                }
+                DatePickerDialog(
+                    context,
+                    { _, year, month, dayOfMonth ->
+                        val selectedCal = Calendar.getInstance()
+                        selectedCal.set(year, month, dayOfMonth)
+                        val formattedDate = dateFormat.format(selectedCal.time)
+                        viewModel.setFilters(filters.copy(date = formattedDate))
+                        datePickerOpen = false
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+                ).apply {
+                    setOnCancelListener { datePickerOpen = false }
+                }.show()
             }
         }
     }
