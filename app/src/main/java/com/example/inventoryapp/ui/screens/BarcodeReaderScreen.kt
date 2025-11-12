@@ -40,6 +40,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
+import androidx.camera.core.ImageAnalysis.COORDINATE_SYSTEM_SENSOR
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
@@ -314,7 +315,7 @@ private fun BarcodeCamera(
                     cameraExecutor,
                     MlKitAnalyzer(
                         listOf(barcodeScanner),
-                        CameraController.COORDINATE_SYSTEM_SENSOR,
+                        COORDINATE_SYSTEM_SENSOR,
                         cameraExecutor
                     ) { result ->
                         try {
