@@ -96,6 +96,7 @@ fun AnalyticsScreen(
     val totalSales = filtered.filter { it.type.equals("Sale", true) }.sumOf { it.amount }
     val totalPurchases = filtered.filter { it.type.equals("Purchase", true) }.sumOf { it.amount }
     val totalRepairs = filtered.filter { it.type.equals("Repair", true) }.sumOf { it.amount }
+    val totalRepairReturns = filtered.filter { it.type.equals("Repair Return", true) }.sumOf { it.amount }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Analytics / Stats") }) }
@@ -127,6 +128,7 @@ fun AnalyticsScreen(
             Text("Total Sales: ₹$totalSales", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
             Text("Total Purchases: ₹$totalPurchases", color = Color(0xFF2196F3), fontWeight = FontWeight.Bold)
             Text("Total Repairs: ₹$totalRepairs", color = Color(0xFFFFA726), fontWeight = FontWeight.Bold)
+            Text("Total Repair Returns: ₹$totalRepairReturns", color = Color(0xFF9C27B0), fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
 
             HorizontalDivider()

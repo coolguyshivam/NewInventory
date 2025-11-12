@@ -63,6 +63,9 @@ fun InventoryScreen(
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Tab state: 0 = Main Inventory, 1 = Under Repair
+    var selectedTab by remember { mutableStateOf(0) }
 
     var showPhotoViewer by remember { mutableStateOf(false) }
     var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -88,10 +91,17 @@ fun InventoryScreen(
 
     LaunchedEffect(inventory) {
         inventory.forEach { item ->
-            if (item.quantity <= 0 || item.isSold || item.isInRepair) {
+            if (item.quantity <= 0 || item.isSold) {
                 scope.launch { inventoryRepo.deleteItem(item.serial) }
             }
         }
+    }
+    
+    // Filter inventory based on selected tab
+    val displayedInventory = when (selectedTab) {
+        0 -> inventory.filter { it.status == com.example.inventoryapp.model.ItemStatus.AVAILABLE }
+        1 -> inventory.filter { it.status == com.example.inventoryapp.model.ItemStatus.REPAIR }
+        else -> inventory
     }
 
     val scannedSerialLive = navController.currentBackStackEntry?.savedStateHandle?.getLiveData<String>("scannedSerial")
@@ -140,6 +150,23 @@ fun InventoryScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             )
+            
+            // Tab selector for Main Inventory and Under Repair
+            TabRow(
+                selectedTabIndex = selectedTab,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Main Inventory") }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Under Repair") }
+                )
+            }
             Spacer(Modifier.height(8.dp))
 
             when {
@@ -149,11 +176,11 @@ fun InventoryScreen(
                 error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
                 }
-                inventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                displayedInventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No inventory items found.")
                 }
                 else -> LazyColumn {
-                    itemsIndexed(inventory, key = { _, item -> item.serial }) { _, item ->
+                    itemsIndexed(displayedInventory, key = { _, item -> item.serial }) { _, item ->
                         InventoryCard(
                             item = item,
                             userRole = role,
