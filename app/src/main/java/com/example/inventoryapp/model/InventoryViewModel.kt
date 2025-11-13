@@ -21,6 +21,14 @@ class InventoryViewModel(
     val userRole: UserRole
 ) : ViewModel() {
 
+    // Separate lists for AVAILABLE and REPAIR items
+    private val _availableInventory = MutableLiveData<List<InventoryItem>>(emptyList())
+    val availableInventory: LiveData<List<InventoryItem>> = _availableInventory
+
+    private val _repairInventory = MutableLiveData<List<InventoryItem>>(emptyList())
+    val repairInventory: LiveData<List<InventoryItem>> = _repairInventory
+
+    // Legacy: combined inventory for backward compatibility
     private val _inventory = MutableLiveData<List<InventoryItem>>(emptyList())
     val inventory: LiveData<List<InventoryItem>> = _inventory
 
@@ -60,18 +68,31 @@ class InventoryViewModel(
             val result = repo.getAllItems(limit = limit, startAfter = if (paginate) lastInventorySerial else null)
             when (result) {
                 is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
-                    removedItems.forEach { item ->
+                    // Separate items by status
+                    val allItems = result.data
+                    val available = allItems.filter { it.status == ItemStatus.AVAILABLE && it.quantity > 0 }
+                    val repair = allItems.filter { it.status == ItemStatus.REPAIR }
+                    
+                    // Only delete items with zero quantity that are AVAILABLE, or items that are SOLD/DELETED
+                    val itemsToDelete = allItems.filter { 
+                        (it.status == ItemStatus.AVAILABLE && it.quantity <= 0) || 
+                        it.status == ItemStatus.SOLD ||
+                        it.status == ItemStatus.DELETED
+                    }
+                    itemsToDelete.forEach { item ->
                         repo.deleteItem(item.serial)
                     }
+                    
                     if (paginate) {
-                        _inventory.postValue((_inventory.value ?: emptyList()) + validItems)
+                        _availableInventory.postValue((_availableInventory.value ?: emptyList()) + available)
+                        _repairInventory.postValue((_repairInventory.value ?: emptyList()) + repair)
+                        _inventory.postValue((_inventory.value ?: emptyList()) + available + repair)
                     } else {
-                        _inventory.postValue(validItems)
+                        _availableInventory.postValue(available)
+                        _repairInventory.postValue(repair)
+                        _inventory.postValue(available + repair)
                     }
-                    lastInventorySerial = validItems.lastOrNull()?.serial
+                    lastInventorySerial = allItems.lastOrNull()?.serial
                 }
                 is Result.Error -> {
                     _error.postValue(result.exception?.message ?: "Error loading inventory")
@@ -107,16 +128,26 @@ class InventoryViewModel(
             val result = repo.getAllItems(limit = 500)
             when (result) {
                 is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
-                    removedItems.forEach { item ->
+                    // Separate items by status
+                    val allItems = result.data
+                    val available = allItems.filter { it.status == ItemStatus.AVAILABLE && it.quantity > 0 }
+                    val repair = allItems.filter { it.status == ItemStatus.REPAIR }
+                    
+                    // Only delete items with zero quantity that are AVAILABLE, or items that are SOLD/DELETED
+                    val itemsToDelete = allItems.filter { 
+                        (it.status == ItemStatus.AVAILABLE && it.quantity <= 0) || 
+                        it.status == ItemStatus.SOLD ||
+                        it.status == ItemStatus.DELETED
+                    }
+                    itemsToDelete.forEach { item ->
                         repo.deleteItem(item.serial)
                     }
+                    
                     val filters = _filters.value ?: InventoryFilters()
                     val search = _searchQuery.value
                     val sort = _sortBy.value
 
+                    val validItems = available + repair
                     val filtered = validItems.filter { item ->
                         (filters.serial.isNullOrBlank() || item.serial.contains(filters.serial!!, ignoreCase = true)) &&
                         (filters.model.isNullOrBlank() || item.model.contains(filters.model!!, ignoreCase = true)) &&
@@ -133,6 +164,10 @@ class InventoryViewModel(
                         "Serial" -> filtered.sortedBy { it.serial }
                         else -> filtered
                     }
+                    
+                    // Update both lists
+                    _availableInventory.postValue(sorted.filter { it.status == ItemStatus.AVAILABLE })
+                    _repairInventory.postValue(sorted.filter { it.status == ItemStatus.REPAIR })
                     _inventory.postValue(sorted)
                 }
                 is Result.Error -> {
@@ -238,6 +273,26 @@ class InventoryViewModel(
 
     fun clearError() {
         _error.value = null
+    }
+
+    // Mark item as in repair (AVAILABLE -> REPAIR)
+    fun markItemAsRepair(item: InventoryItem, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedItem = item.copy(status = ItemStatus.REPAIR)
+            val result = repo.addOrUpdateItem(item.serial, updatedItem)
+            onComplete(result is Result.Success)
+            if (result is Result.Success) loadInventory()
+        }
+    }
+
+    // Return item from repair (REPAIR -> AVAILABLE)
+    fun returnItemFromRepair(item: InventoryItem, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedItem = item.copy(status = ItemStatus.AVAILABLE)
+            val result = repo.addOrUpdateItem(item.serial, updatedItem)
+            onComplete(result is Result.Success)
+            if (result is Result.Success) loadInventory()
+        }
     }
 
     companion object {
