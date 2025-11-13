@@ -314,7 +314,7 @@ private fun BarcodeCamera(
                     cameraExecutor,
                     MlKitAnalyzer(
                         listOf(barcodeScanner),
-                        CameraController.COORDINATE_SYSTEM_SENSOR,
+                        LifecycleCameraController.COORDINATE_SYSTEM_SENSOR,
                         cameraExecutor
                     ) { result ->
                         try {
