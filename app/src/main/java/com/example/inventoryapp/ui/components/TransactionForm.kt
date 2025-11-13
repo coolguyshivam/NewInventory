@@ -44,6 +44,7 @@ import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.InventoryItem
+import com.example.inventoryapp.model.ItemStatus
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.ImageUtils
