@@ -34,6 +34,7 @@ import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.ImageSaveUtils
 import com.example.inventoryapp.ui.components.TransactionHistoryCard
+import com.example.inventoryapp.ui.components.DateField
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -273,29 +274,25 @@ fun TransactionHistoryScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Date Range", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
+                                DateField(
                                     value = fromDateString,
-                                    onValueChange = { },
-                                    label = { Text("From", style = MaterialTheme.typography.labelMedium) },
-                                    placeholder = { Text("yyyy-MM-dd") },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { fromDatePickerOpen = true },
-                                    shape = RoundedCornerShape(12.dp),
-                                    readOnly = true
+                                    onValueChange = { 
+                                        fromDateString = it
+                                        fromDate = try { dateFormat.parse(it) } catch (e: Exception) { null }
+                                    },
+                                    label = "From",
+                                    placeholder = "yyyy-MM-dd",
+                                    modifier = Modifier.weight(1f)
                                 )
-                                OutlinedTextField(
+                                DateField(
                                     value = toDateString,
-                                    onValueChange = { },
-                                    label = { Text("To", style = MaterialTheme.typography.labelMedium) },
-                                    placeholder = { Text("yyyy-MM-dd") },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { toDatePickerOpen = true },
-                                    shape = RoundedCornerShape(12.dp),
-                                    readOnly = true
+                                    onValueChange = { 
+                                        toDateString = it
+                                        toDate = try { dateFormat.parse(it) } catch (e: Exception) { null }
+                                    },
+                                    label = "To",
+                                    placeholder = "yyyy-MM-dd",
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }

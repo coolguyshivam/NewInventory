@@ -44,6 +44,7 @@ import androidx.navigation.NavController
 import com.example.inventoryapp.data.InventoryRepository
 import com.example.inventoryapp.data.Result
 import com.example.inventoryapp.model.InventoryItem
+import com.example.inventoryapp.model.ItemStatus
 import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.ImageUtils
@@ -73,7 +74,7 @@ fun TransactionForm(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    val transactionTypes = listOf("Purchase", "Sale", "Return", "Repair")
+    val transactionTypes = listOf("Purchase", "Sale", "Repair", "Repair Return")
     var type by remember { mutableStateOf(prefillType ?: transactionTypes.first()) }
     var serial by remember { mutableStateOf(prefillSerial ?: "") }
     var model by remember { mutableStateOf(prefillModel ?: "") }
@@ -493,9 +494,10 @@ fun TransactionForm(
                 label = { Text("Description") },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 120.dp)
                     .focusRequester(descriptionFocus),
                 singleLine = false,
-                maxLines = 3,
+                maxLines = 6,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
                     onNext = { quantityFocus.requestFocus() }
@@ -681,60 +683,65 @@ fun TransactionForm(
                             )
 
                             val item = inventoryRepo.getItemBySerial(serial)
-                            val wasSold = inventoryRepo.wasSerialSold(serial)
-                            val isInRepair = inventoryRepo.isSerialInRepair(serial)
 
                             // Business rules
-                            if (type == "Sale" && (item == null || item.quantity < 1)) {
-                                snackbarHostState.showSnackbar("Cannot sell: item not in inventory or insufficient stock.")
-                                loading = false
-                                uploading = false
-                                return@launch
-                            }
-                            if (type == "Sale" && item != null && !item.canSell()) {
-                                snackbarHostState.showSnackbar("Cannot sell: item is currently in repair mode.")
-                                loading = false
-                                uploading = false
-                                return@launch
-                            }
-                            if (type == "Purchase" && item != null) {
-                                snackbarHostState.showSnackbar("Cannot purchase: serial already exists in inventory.")
-                                loading = false
-                                uploading = false
-                                return@launch
-                            }
-                            if (type == "Repair") {
-                                if (item == null) {
-                                    snackbarHostState.showSnackbar("Cannot repair: serial not in inventory.")
-                                    loading = false
-                                    uploading = false
-                                    return@launch
+                            when (type) {
+                                "Sale" -> {
+                                    if (item == null || item.quantity < 1) {
+                                        snackbarHostState.showSnackbar("Cannot sell: item not in inventory or insufficient stock.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
+                                    if (!item.canSell()) {
+                                        snackbarHostState.showSnackbar("Cannot sell: item is not available or in repair mode.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
                                 }
-                                inventoryRepo.removeItemBySerial(serial)
-                            }
-                            if (type == "Return") {
-                                if (!wasSold && !isInRepair) {
-                                    snackbarHostState.showSnackbar("Cannot return: item not sold or in repair.")
-                                    loading = false
-                                    uploading = false
-                                    return@launch
+                                "Purchase" -> {
+                                    if (item != null) {
+                                        snackbarHostState.showSnackbar("Cannot purchase: serial already exists in inventory.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
                                 }
-                                if (isInRepair) {
-                                    val repairedItem = InventoryItem(
-                                        serial = serial,
-                                        name = model,
-                                        model = model,
-                                        quantity = 1,
-                                        phone = phone,
-                                        aadhaar = aadhaar,
-                                        description = description,
-                                        date = date,
-                                        timestamp = System.currentTimeMillis(),
-                                        imageUrls = imageUrls
-                                    )
-                                    inventoryRepo.addOrUpdateItem(serial, repairedItem)
+                                "Repair" -> {
+                                    if (item == null) {
+                                        snackbarHostState.showSnackbar("Cannot repair: serial not in inventory.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
+                                    if (item.status != ItemStatus.AVAILABLE) {
+                                        snackbarHostState.showSnackbar("Cannot repair: item must be available.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
+                                    // Update item status to REPAIR
+                                    val updatedItem = item.copy(status = ItemStatus.REPAIR)
+                                    inventoryRepo.addOrUpdateItem(serial, updatedItem)
                                 }
-                                // Logic for sold item return can be added here
+                                "Repair Return" -> {
+                                    if (item == null) {
+                                        snackbarHostState.showSnackbar("Cannot return: serial not in inventory.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
+                                    if (item.status != ItemStatus.REPAIR) {
+                                        snackbarHostState.showSnackbar("Cannot return: item must be in repair.")
+                                        loading = false
+                                        uploading = false
+                                        return@launch
+                                    }
+                                    // Update item status back to AVAILABLE
+                                    val updatedItem = item.copy(status = ItemStatus.AVAILABLE)
+                                    inventoryRepo.addOrUpdateItem(serial, updatedItem)
+                                }
                             }
 
                             val result = inventoryRepo.addTransaction(serial, transaction)

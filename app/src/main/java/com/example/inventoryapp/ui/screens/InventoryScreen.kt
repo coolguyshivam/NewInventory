@@ -33,6 +33,7 @@ import com.example.inventoryapp.model.InventoryViewModel
 import com.example.inventoryapp.model.UserRole
 import com.example.inventoryapp.utils.downloadImageToGallery
 import com.example.inventoryapp.ui.components.InventoryCard
+import com.example.inventoryapp.ui.screens.AddEditItemDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.livedata.observeAsState
@@ -49,6 +50,8 @@ fun InventoryScreen(
 ) {
     val context = LocalContext.current
     var filterText by remember { mutableStateOf("") }
+    val availableInventory by viewModel.availableInventory.observeAsState(emptyList())
+    val repairInventory by viewModel.repairInventory.observeAsState(emptyList())
     val inventory by viewModel.inventory.observeAsState(emptyList())
     val loading by viewModel.loading.observeAsState(false)
     val error by viewModel.error.observeAsState()
@@ -56,11 +59,22 @@ fun InventoryScreen(
     val role = viewModel.userRole
     val sortBy by viewModel.sortBy.collectAsState()
 
+    // Tab state: 0 = Inventory (Available), 1 = Repair
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var selectedSerials by remember { mutableStateOf(setOf<String>()) }
-    val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
+    
+    // Display list based on selected tab
+    val displayInventory = when (selectedTabIndex) {
+        0 -> availableInventory
+        1 -> repairInventory
+        else -> availableInventory
+    }
+    val allSelected = displayInventory.isNotEmpty() && displayInventory.all { selectedSerials.contains(it.serial) }
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var editingItem by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -82,14 +96,6 @@ fun InventoryScreen(
             val result = inventoryRepo.getAllItems(limit = 100)
             if (result is com.example.inventoryapp.data.Result.Success && result.data != lastInventory) {
                 viewModel.loadInventory()
-            }
-        }
-    }
-
-    LaunchedEffect(inventory) {
-        inventory.forEach { item ->
-            if (item.quantity <= 0 || item.isSold || item.isInRepair) {
-                scope.launch { inventoryRepo.deleteItem(item.serial) }
             }
         }
     }
@@ -142,6 +148,24 @@ fun InventoryScreen(
             )
             Spacer(Modifier.height(8.dp))
 
+            // Tab selector for Inventory (Available) and Repair
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { selectedTabIndex = 0 },
+                    text = { Text("Inventory (${availableInventory.size})") }
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { selectedTabIndex = 1 },
+                    text = { Text("Repair (${repairInventory.size})") }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
             when {
                 loading == true -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -149,16 +173,16 @@ fun InventoryScreen(
                 error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
                 }
-                inventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No inventory items found.")
+                displayInventory.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(if (selectedTabIndex == 0) "No inventory items found." else "No items in repair.")
                 }
                 else -> LazyColumn {
-                    itemsIndexed(inventory, key = { _, item -> item.serial }) { _, item ->
+                    itemsIndexed(displayInventory, key = { _, item -> item.serial }) { _, item ->
                         InventoryCard(
                             item = item,
                             userRole = role,
                             onClick = { selectedItem = item },
-                            onEdit = { /* implement if needed */ },
+                            onEdit = { editingItem = item },
                             onDelete = {
                                 scope.launch {
                                     if (!item.canDelete()) {
@@ -396,6 +420,39 @@ fun InventoryScreen(
                                 onClick = { filterDialogVisible = false },
                                 shape = RoundedCornerShape(12.dp)
                             ) { Text("Apply") }
+                        }
+                    }
+                )
+            }
+            
+            // Edit Item Dialog
+            editingItem?.let { item ->
+                AddEditItemDialog(
+                    originalItem = item,
+                    onDismiss = { editingItem = null },
+                    onSave = { updatedItem, changesSummary ->
+                        scope.launch {
+                            // Log the edit transaction
+                            val editResult = inventoryRepo.createEditTransaction(
+                                serial = item.serial,
+                                item = updatedItem,
+                                editedBy = "Admin", // TODO: Get actual user from auth context
+                                changesSummary = changesSummary
+                            )
+                            
+                            if (editResult is com.example.inventoryapp.data.Result.Success) {
+                                // Update the item
+                                val updateResult = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
+                                if (updateResult is com.example.inventoryapp.data.Result.Success) {
+                                    viewModel.loadInventory()
+                                    snackbarHostState.showSnackbar("Item updated successfully")
+                                    editingItem = null
+                                } else if (updateResult is com.example.inventoryapp.data.Result.Error) {
+                                    snackbarHostState.showSnackbar(updateResult.exception?.message ?: "Failed to update item")
+                                }
+                            } else if (editResult is com.example.inventoryapp.data.Result.Error) {
+                                snackbarHostState.showSnackbar("Failed to log edit: ${editResult.exception?.message}")
+                            }
                         }
                     }
                 )

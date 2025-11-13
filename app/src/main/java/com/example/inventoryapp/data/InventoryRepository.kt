@@ -32,6 +32,9 @@ interface InventoryRepository {
     
     // --- Added for deletion logging ---
     suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit>
+    
+    // --- Added for edit logging ---
+    suspend fun createEditTransaction(serial: String, item: InventoryItem, editedBy: String, changesSummary: String): Result<Unit>
 }
 
 // --- Firebase implementation ---
@@ -215,6 +218,30 @@ class FirebaseInventoryRepository(
         )
         
         db.collection("transactions").add(deleteTransaction).await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(e)
+    }
+    
+    override suspend fun createEditTransaction(serial: String, item: InventoryItem, editedBy: String, changesSummary: String): Result<Unit> = try {
+        val editTransaction = Transaction(
+            id = "",
+            type = "EDIT",
+            model = item.model,
+            serial = serial,
+            customerName = "",
+            phoneNumber = "",
+            aadhaarNumber = "",
+            amount = 0.0,
+            quantity = 1,
+            description = "Item edited: $changesSummary",
+            date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
+            timestamp = System.currentTimeMillis(),
+            userRole = editedBy,
+            images = emptyList()
+        )
+        
+        db.collection("transactions").add(editTransaction).await()
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Error(e)
