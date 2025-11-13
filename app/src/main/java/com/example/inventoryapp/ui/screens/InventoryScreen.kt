@@ -187,7 +187,7 @@ fun InventoryScreen(
                         if (selectedTabIndex < tabPositions.size) {
                             TabRowDefaults.SecondaryIndicator(
                                 modifier = Modifier
-                                    .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                    .then(TabRowDefaults.tabIndicatorOffset(tabPositions[selectedTabIndex]))
                                     .padding(horizontal = 16.dp)
                                     .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
                                 height = 3.dp,
