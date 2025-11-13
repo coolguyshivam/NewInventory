@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -39,6 +40,9 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.animation.AnimatedVisibility
+import android.app.DatePickerDialog
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -405,9 +409,39 @@ fun InventoryScreen(
                             )
                             OutlinedTextField(
                                 value = filters.date ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(date = it)) },
+                                onValueChange = { },
                                 label = { Text("Date (yyyy-MM-dd)") },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        val dateStr = filters.date
+                                        if (!dateStr.isNullOrBlank()) {
+                                            try {
+                                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                                val date = sdf.parse(dateStr)
+                                                if (date != null) calendar.time = date
+                                            } catch (e: Exception) {
+                                                // Use current date
+                                            }
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedDate = Calendar.getInstance()
+                                                selectedDate.set(year, month, dayOfMonth)
+                                                val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+                                                viewModel.setFilters(filters.copy(date = formattedDate))
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }) {
+                                        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                                    }
+                                }
                             )
                         }
                     },

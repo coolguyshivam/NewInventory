@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,9 +23,10 @@ import com.example.inventoryapp.model.Transaction
 import com.example.inventoryapp.model.UserRole
 import com.google.firebase.analytics.FirebaseAnalytics
 import androidx.compose.ui.platform.LocalContext
+import android.app.DatePickerDialog
 import android.os.Bundle
 import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,6 +160,7 @@ fun AnalyticsFilters(
     endDate: String,
     onEndDateChange: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         DropdownMenuBox(
             label = "Type",
@@ -194,18 +198,70 @@ fun AnalyticsFilters(
     Row {
         OutlinedTextField(
             value = startDate,
-            onValueChange = onStartDateChange,
+            onValueChange = { },
             label = { Text("Start Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f)
+            readOnly = true,
+            modifier = Modifier.weight(1f),
+            trailingIcon = {
+                IconButton(onClick = {
+                    val calendar = Calendar.getInstance()
+                    if (startDate.isNotBlank()) {
+                        try {
+                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val date = sdf.parse(startDate)
+                            if (date != null) calendar.time = date
+                        } catch (e: Exception) { }
+                    }
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            val selectedDate = Calendar.getInstance()
+                            selectedDate.set(year, month, dayOfMonth)
+                            val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+                            onStartDateChange(formattedDate)
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick Start Date")
+                }
+            }
         )
         Spacer(modifier = Modifier.width(8.dp))
         OutlinedTextField(
             value = endDate,
-            onValueChange = onEndDateChange,
+            onValueChange = { },
             label = { Text("End Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f)
+            readOnly = true,
+            modifier = Modifier.weight(1f),
+            trailingIcon = {
+                IconButton(onClick = {
+                    val calendar = Calendar.getInstance()
+                    if (endDate.isNotBlank()) {
+                        try {
+                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val date = sdf.parse(endDate)
+                            if (date != null) calendar.time = date
+                        } catch (e: Exception) { }
+                    }
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            val selectedDate = Calendar.getInstance()
+                            selectedDate.set(year, month, dayOfMonth)
+                            val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+                            onEndDateChange(formattedDate)
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick End Date")
+                }
+            }
         )
     }
 }
