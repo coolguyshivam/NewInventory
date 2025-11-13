@@ -1,6 +1,7 @@
 package com.example.inventoryapp.ui.components
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -52,6 +54,17 @@ fun InventoryCard(
     val haptic = LocalHapticFeedback.current
     var expanded by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    
+    // Smooth scale animation for interactions
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
 
     val formattedDate = remember(item.date) {
         if (item.date.isNotEmpty()) item.date else "-"
@@ -61,8 +74,14 @@ fun InventoryCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .animateContentSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .scale(scale)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                )
                 .combinedClickable(
                     onClick = {
                         expanded = !expanded
@@ -75,44 +94,70 @@ fun InventoryCard(
                     },
                     role = Role.Button
                 ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (isSelected) 8.dp else 4.dp,
+                pressedElevation = 2.dp,
+                hoveredElevation = 6.dp
+            ),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected) 
+                    MaterialTheme.colorScheme.primaryContainer 
+                else 
+                    MaterialTheme.colorScheme.surface
+            )
         ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             // --- IMAGES ---
-            if (imageUrls.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .fillMaxWidth()
-                        .height(110.dp)
-                ) {
-                    imageUrls.forEachIndexed { idx, url ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(url)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Inventory image",
-                            modifier = Modifier
-                                .size(100.dp)
-                                .padding(end = 8.dp)
-                                .clickable { onImageClick(idx) }
-                        )
+            AnimatedVisibility(
+                visible = imageUrls.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .fillMaxWidth()
+                            .height(120.dp)
+                    ) {
+                        imageUrls.forEachIndexed { idx, url ->
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(url)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Inventory image",
+                                modifier = Modifier
+                                    .size(110.dp)
+                                    .padding(end = 12.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onImageClick(idx) }
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(8.dp))
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 if (userRole == UserRole.ADMIN || userRole == UserRole.OPERATOR) {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                        Icon(
+                            Icons.Default.MoreVert, 
+                            contentDescription = "More",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -169,55 +214,129 @@ fun InventoryCard(
                     }
                 }
             }
+            
+            Spacer(Modifier.height(12.dp))
+            
+            // Information rows with better styling
+            InfoRow(label = "Serial", value = item.serial)
             Spacer(Modifier.height(8.dp))
-            Text(text = "Serial: ${item.serial}")
-            Text(text = "Model: ${item.model}")
-            Text(text = "Date: $formattedDate")
-            if (expanded) {
-                Spacer(Modifier.height(8.dp))
-                Text(text = if (item.description.isNotBlank()) item.description else "No description")
-                Row {
-                    if (userRole == UserRole.ADMIN || userRole == UserRole.OPERATOR) {
-                        Button(
-                            onClick = onAddTransaction,
-                            modifier = Modifier.testTag("addTransactionButton"),
-                            enabled = item.canSell()
-                        ) {
-                            Text("Add Transaction")
-                        }
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Button(
-                        onClick = onViewHistory,
-                        modifier = Modifier.testTag("historyButton")
+            InfoRow(label = "Model", value = item.model)
+            Spacer(Modifier.height(8.dp))
+            InfoRow(label = "Date", value = formattedDate)
+            
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + 
+                        expandVertically(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(200)) + 
+                       shrinkVertically(animationSpec = tween(200))
+            ) {
+                Column {
+                    Spacer(Modifier.height(16.dp))
+                    
+                    // Description with card background
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("History")
+                        Text(
+                            text = if (item.description.isNotBlank()) item.description else "No description",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(16.dp))
+                    
+                    // Action buttons with better spacing
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (userRole == UserRole.ADMIN || userRole == UserRole.OPERATOR) {
+                            Button(
+                                onClick = onAddTransaction,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("addTransactionButton"),
+                                enabled = item.canSell(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Text(
+                                    "Add Transaction",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onViewHistory,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("historyButton"),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                "History",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
         }
         }
         
-        // Repair Mode Badge Overlay
-        if (item.status == ItemStatus.REPAIR || item.isInRepair) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 8.dp, end = 8.dp)
-                    .zIndex(1f),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Red
-                ),
-                shape = RoundedCornerShape(4.dp)
+        // Repair Mode Badge Overlay with animation
+        AnimatedVisibility(
+            visible = item.status == ItemStatus.REPAIR || item.isInRepair,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 16.dp)
+                .zIndex(1f)
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.error,
+                shape = RoundedCornerShape(8.dp),
+                shadowElevation = 4.dp
             ) {
                 Text(
                     text = "REPAIR MODE",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = MaterialTheme.colorScheme.onError,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(60.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
