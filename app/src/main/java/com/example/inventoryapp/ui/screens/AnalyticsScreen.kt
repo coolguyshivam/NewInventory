@@ -22,6 +22,7 @@ import com.example.inventoryapp.model.UserRole
 import com.google.firebase.analytics.FirebaseAnalytics
 import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
+import com.example.inventoryapp.ui.components.DateField
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -192,19 +193,17 @@ fun AnalyticsFilters(
     }
     Spacer(Modifier.height(8.dp))
     Row {
-        OutlinedTextField(
+        DateField(
             value = startDate,
             onValueChange = onStartDateChange,
-            label = { Text("Start Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            label = "Start Date",
             modifier = Modifier.weight(1f)
         )
         Spacer(modifier = Modifier.width(8.dp))
-        OutlinedTextField(
+        DateField(
             value = endDate,
             onValueChange = onEndDateChange,
-            label = { Text("End Date (yyyy-MM-dd)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            label = "End Date",
             modifier = Modifier.weight(1f)
         )
     }
