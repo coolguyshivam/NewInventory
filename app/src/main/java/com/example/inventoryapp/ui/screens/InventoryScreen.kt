@@ -55,6 +55,10 @@ fun InventoryScreen(
     val filters by viewModel.filters.observeAsState(InventoryFilters())
     val role = viewModel.userRole
     val sortBy by viewModel.sortBy.collectAsState()
+    
+    // Tab state for Main Inventory vs Repair
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabTitles = listOf("Main Inventory", "Repair")
 
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var selectedSerials by remember { mutableStateOf(setOf<String>()) }
@@ -106,6 +110,14 @@ fun InventoryScreen(
         }
     }
 
+    // Update filter when tab changes
+    LaunchedEffect(selectedTabIndex) {
+        when (selectedTabIndex) {
+            0 -> viewModel.setStatusFilter(null) // Main Inventory - show available items
+            1 -> viewModel.setStatusFilter(com.example.inventoryapp.model.ItemStatus.REPAIR) // Repair tab
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
@@ -140,6 +152,21 @@ fun InventoryScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             )
+            Spacer(Modifier.height(8.dp))
+
+            // Tab row for Main Inventory and Repair
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
             Spacer(Modifier.height(8.dp))
 
             when {
