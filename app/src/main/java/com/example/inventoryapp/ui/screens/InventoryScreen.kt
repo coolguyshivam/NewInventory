@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -118,9 +119,10 @@ fun InventoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp)
+                .padding(16.dp)
                 .padding(paddingValues)
         ) {
+            // Modern search bar with rounded corners
             OutlinedTextField(
                 value = filterText,
                 onValueChange = {
@@ -128,43 +130,98 @@ fun InventoryScreen(
                     viewModel.searchInventory(it)
                 },
                 placeholder = { Text("Search inventory...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { 
+                    Icon(
+                        Icons.Default.Search, 
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    ) 
+                },
                 trailingIcon = {
                     Row {
                         IconButton(onClick = { filterDialogVisible = true }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                            Icon(
+                                Icons.Default.FilterList, 
+                                contentDescription = "Filter",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         IconButton(onClick = { navController.navigate("barcode_reader") }) {
-                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Barcode")
+                            Icon(
+                                Icons.Default.QrCodeScanner, 
+                                contentDescription = "Barcode",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         IconButton(onClick = { viewModel.loadInventory() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(
+                                Icons.Default.Refresh, 
+                                contentDescription = "Refresh",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Tab selector for Inventory (Available) and Repair
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                modifier = Modifier.fillMaxWidth()
+            // Modern tab selector with better styling
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 },
-                    text = { Text("Inventory (${availableInventory.size})") }
-                )
-                Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 },
-                    text = { Text("Repair (${repairInventory.size})") }
-                )
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = Color.Transparent,
+                    indicator = { tabPositions ->
+                        if (selectedTabIndex < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier
+                                    .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                    .padding(horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                                height = 3.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { 
+                            Text(
+                                "Inventory (${availableInventory.size})",
+                                fontWeight = if (selectedTabIndex == 0) FontWeight.SemiBold else FontWeight.Normal,
+                                style = MaterialTheme.typography.labelLarge
+                            ) 
+                        }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { selectedTabIndex = 1 },
+                        text = { 
+                            Text(
+                                "Repair (${repairInventory.size})",
+                                fontWeight = if (selectedTabIndex == 1) FontWeight.SemiBold else FontWeight.Normal,
+                                style = MaterialTheme.typography.labelLarge
+                            ) 
+                        }
+                    )
+                }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
             when {
                 loading == true -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
