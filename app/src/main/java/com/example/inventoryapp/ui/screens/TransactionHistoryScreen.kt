@@ -372,6 +372,7 @@ fun TransactionHistoryScreen(
                         Text("Aadhaar: ${tx.aadhaarNumber}")
                         Text("Amount: ${tx.amount}")
                         Text("Date: ${tx.date}")
+                        Text("Timestamp: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))}")
                         Text("Description: ${tx.description}")
                         if (tx.deletedInfo != null) {
                             Text(

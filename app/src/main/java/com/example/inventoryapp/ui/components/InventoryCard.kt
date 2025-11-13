@@ -125,29 +125,31 @@ fun InventoryCard(
                                 onEdit()
                             }
                         )
+                        
+                        // Mark as Repair (available to both ADMIN and OPERATOR)
+                        if (item.canMarkRepair()) {
+                            DropdownMenuItem(
+                                text = { Text("Mark as In Repair") },
+                                onClick = {
+                                    showMenu = false
+                                    onMarkRepair()
+                                }
+                            )
+                        }
+                        
+                        // Return action (available to both ADMIN and OPERATOR)
+                        if (item.canReturn()) {
+                            DropdownMenuItem(
+                                text = { Text("Return to Available") },
+                                onClick = {
+                                    showMenu = false
+                                    onReturn()
+                                }
+                            )
+                        }
+                        
+                        // Delete is only available to ADMIN
                         if (userRole == UserRole.ADMIN) {
-                            // Mark as Repair (only if available)
-                            if (item.canMarkRepair()) {
-                                DropdownMenuItem(
-                                    text = { Text("Mark as In Repair") },
-                                    onClick = {
-                                        showMenu = false
-                                        onMarkRepair()
-                                    }
-                                )
-                            }
-                            
-                            // Return action (if in repair or sold)
-                            if (item.canReturn()) {
-                                DropdownMenuItem(
-                                    text = { Text("Return to Available") },
-                                    onClick = {
-                                        showMenu = false
-                                        onReturn()
-                                    }
-                                )
-                            }
-                            
                             DropdownMenuItem(
                                 text = { Text("Delete") },
                                 onClick = {
@@ -157,13 +159,6 @@ fun InventoryCard(
                                     }
                                 },
                                 enabled = item.canDelete()
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Archive") },
-                                onClick = {
-                                    showMenu = false
-                                    onArchive()
-                                }
                             )
                         }
                     }

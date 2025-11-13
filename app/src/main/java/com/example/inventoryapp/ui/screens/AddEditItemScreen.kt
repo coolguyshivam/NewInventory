@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.inventoryapp.model.InventoryItem
 
@@ -60,7 +61,10 @@ fun AddEditItemDialog(
                         .fillMaxWidth()
                         .heightIn(min = 100.dp),
                     maxLines = 4,
-                    minLines = 3
+                    minLines = 3,
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Default  // Allow Enter key for newlines
+                    )
                 )
             }
         },

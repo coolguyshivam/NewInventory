@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +34,7 @@ fun AnalyticsScreen(
     inventoryRepo: InventoryRepository,
     userRole: UserRole
 ) {
-    // Only allow admin users
+    // Only allow admin users (not operators)
     if (userRole != UserRole.ADMIN) {
         Box(
             Modifier.fillMaxSize(),
@@ -99,14 +101,96 @@ fun AnalyticsScreen(
     val totalRepairs = filtered.filter { it.type.equals("Repair", true) }.sumOf { it.amount }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Analytics / Stats") }) }
+        topBar = { TopAppBar(title = { Text("Analytics Dashboard") }) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Filters UI
+            // Summary Cards Section
+            Text(
+                "Financial Summary",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Sales Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("Sales", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("₹$totalSales", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                        Text("${filtered.count { it.type.equals("Sale", true) }} txns", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    }
+                }
+                
+                // Purchases Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("Purchases", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("₹$totalPurchases", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                        Text("${filtered.count { it.type.equals("Purchase", true) }} txns", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Repairs Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFA726))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("Repairs", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("₹$totalRepairs", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                        Text("${filtered.count { it.type.equals("Repair", true) }} txns", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    }
+                }
+                
+                // Net Profit Card
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (totalSales - totalPurchases >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("Net Profit", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("₹${totalSales - totalPurchases}", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                        Text("Sales - Purchases", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            
+            // Filters Section
+            Text(
+                "Filters",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            
             AnalyticsFilters(
                 types = types,
                 models = models,
@@ -125,15 +209,31 @@ fun AnalyticsScreen(
             )
 
             Spacer(Modifier.height(16.dp))
-            Text("Total Sales: ₹$totalSales", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
-            Text("Total Purchases: ₹$totalPurchases", color = Color(0xFF2196F3), fontWeight = FontWeight.Bold)
-            Text("Total Repairs: ₹$totalRepairs", color = Color(0xFFFFA726), fontWeight = FontWeight.Bold)
+            HorizontalDivider()
             Spacer(Modifier.height(16.dp))
 
-            HorizontalDivider()
+            // Transaction List Section
+            Text(
+                "Transactions (${filtered.size})",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-            LazyColumn {
-                items(filtered) { tx ->
+            if (filtered.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No transactions match the selected filters", color = Color.Gray)
+                    }
+                }
+            } else {
+                filtered.forEach { tx ->
                     TransactionStatsCard(tx)
                 }
             }

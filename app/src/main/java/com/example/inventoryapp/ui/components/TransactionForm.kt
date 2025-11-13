@@ -498,9 +498,8 @@ fun TransactionForm(
                     .focusRequester(descriptionFocus),
                 singleLine = false,
                 maxLines = 6,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { quantityFocus.requestFocus() }
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Default  // Allow Enter key for newlines
                 ),
                 enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)

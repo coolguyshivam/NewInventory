@@ -31,6 +31,10 @@ fun TransactionHistoryCard(
             )
             Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
             Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(transaction.timestamp))}",
+                style = MaterialTheme.typography.bodySmall
+            )
             
             // Show deletion info for DELETE transactions
             if (transaction.type.uppercase() == "DELETE" && transaction.deletedInfo != null) {
