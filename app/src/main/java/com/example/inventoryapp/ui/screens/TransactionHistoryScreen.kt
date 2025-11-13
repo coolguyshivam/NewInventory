@@ -361,25 +361,128 @@ fun TransactionHistoryScreen(
         selectedTx?.let { tx ->
             AlertDialog(
                 onDismissRequest = { selectedTx = null },
-                title = { Text("Transaction Details") },
+                title = { Text("Transaction Details", style = MaterialTheme.typography.titleLarge) },
                 text = {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
-                        Text("Type: ${tx.type}")
-                        Text("Model: ${tx.model}")
-                        Text("Serial: ${tx.serial}")
-                        Text("Customer: ${tx.customerName}")
-                        Text("Phone: ${tx.phoneNumber}")
-                        Text("Aadhaar: ${tx.aadhaarNumber}")
-                        Text("Amount: ${tx.amount}")
-                        Text("Date: ${tx.date}")
-                        Text("Timestamp: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))}")
-                        Text("Description: ${tx.description}")
-                        if (tx.deletedInfo != null) {
-                            Text(
-                                "deleted by ${tx.deletedInfo.deletedBy} at ${tx.deletedInfo.deletedAt}",
-                                color = Color.Red,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        // Transaction Type Badge
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = when (tx.type.lowercase()) {
+                                    "sale" -> Color(0xFF4CAF50)
+                                    "purchase" -> Color(0xFF2196F3)
+                                    "repair" -> Color(0xFFFFA726)
+                                    "return" -> Color(0xFFBDBDBD)
+                                    "delete" -> Color(0xFFE53E3E)
+                                    "edit" -> Color(0xFF9C27B0)
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                }
                             )
+                        ) {
+                            Text(
+                                "Type: ${tx.type}",
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        
+                        // Item Details Section
+                        Text("Item Information", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("Model: ${tx.model}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Serial Number: ${tx.serial}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Quantity: ${tx.quantity}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        
+                        // Customer Details Section
+                        if (tx.customerName.isNotBlank() || tx.phoneNumber?.isNotBlank() == true || tx.aadhaarNumber?.isNotBlank() == true) {
+                            Text("Customer Information", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    if (tx.customerName.isNotBlank()) {
+                                        Text("Name: ${tx.customerName}", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                    if (tx.phoneNumber?.isNotBlank() == true) {
+                                        Text("Phone: ${tx.phoneNumber}", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                    if (tx.aadhaarNumber?.isNotBlank() == true) {
+                                        Text("Aadhaar: ${tx.aadhaarNumber}", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Financial Details Section
+                        Text("Financial Information", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("Amount: ₹${tx.amount}", style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
+                        }
+                        
+                        // Date & Time Section
+                        Text("Date & Time Information", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("Date: ${tx.date}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))}", style = MaterialTheme.typography.bodyMedium)
+                                Text("Full Timestamp: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            }
+                        }
+                        
+                        // Description Section
+                        if (tx.description?.isNotBlank() == true) {
+                            Text("Description", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                Text(
+                                    tx.description ?: "",
+                                    modifier = Modifier.padding(12.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        
+                        // User Information
+                        if (tx.userRole.isNotBlank()) {
+                            Text("User Information", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                Text(
+                                    "Performed by: ${tx.userRole}",
+                                    modifier = Modifier.padding(12.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                        
+                        // Deletion Info
+                        if (tx.deletedInfo != null) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(
+                                        "Deletion Information",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        color = Color.Red
+                                    )
+                                    Text(
+                                        "Deleted by: ${tx.deletedInfo.deletedBy}",
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        "Deleted at: ${tx.deletedInfo.deletedAt}",
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                         Spacer(Modifier.height(8.dp))
                         if (tx.images.isNotEmpty()) {
@@ -463,21 +566,38 @@ fun TransactionHistoryScreen(
                                                         .fillMaxWidth()
                                                         .padding(vertical = 4.dp),
                                                     colors = CardDefaults.cardColors(
-                                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                                        containerColor = when (relatedTx.type.lowercase()) {
+                                                            "sale" -> Color(0xFF4CAF50).copy(alpha = 0.3f)
+                                                            "purchase" -> Color(0xFF2196F3).copy(alpha = 0.3f)
+                                                            "repair" -> Color(0xFFFFA726).copy(alpha = 0.3f)
+                                                            "return" -> Color(0xFFBDBDBD).copy(alpha = 0.3f)
+                                                            "delete" -> Color(0xFFE53E3E).copy(alpha = 0.3f)
+                                                            "edit" -> Color(0xFF9C27B0).copy(alpha = 0.3f)
+                                                            else -> MaterialTheme.colorScheme.surfaceVariant
+                                                        }
                                                     )
                                                 ) {
                                                     Column(Modifier.padding(8.dp)) {
                                                         Text("Type: ${relatedTx.type}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                                         Text("Model: ${relatedTx.model}")
                                                         Text("Serial: ${relatedTx.serial}")
-                                                        Text("Customer: ${relatedTx.customerName}")
-                                                        Text("Phone: ${relatedTx.phoneNumber}")
-                                                        Text("Aadhaar: ${relatedTx.aadhaarNumber}")
-                                                        Text("Amount: ${relatedTx.amount}")
+                                                        if (relatedTx.customerName.isNotBlank()) {
+                                                            Text("Customer: ${relatedTx.customerName}")
+                                                        }
+                                                        if (relatedTx.phoneNumber?.isNotBlank() == true) {
+                                                            Text("Phone: ${relatedTx.phoneNumber}")
+                                                        }
+                                                        if (relatedTx.aadhaarNumber?.isNotBlank() == true) {
+                                                            Text("Aadhaar: ${relatedTx.aadhaarNumber}")
+                                                        }
+                                                        Text("Amount: ₹${relatedTx.amount}", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                                                         Text("Date: ${relatedTx.date}")
-                                                        Text("Description: ${relatedTx.description}")
+                                                        Text("Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(relatedTx.timestamp))}", style = MaterialTheme.typography.bodySmall)
+                                                        if (relatedTx.description?.isNotBlank() == true) {
+                                                            Text("Description: ${relatedTx.description}", style = MaterialTheme.typography.bodySmall)
+                                                        }
                                                         if (relatedTx.images.isNotEmpty()) {
-                                                            Text("Photos:", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                                                            Text("Photos (${relatedTx.images.size}):", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                                                             LazyRow {
                                                                 items(relatedTx.images) { imgUrl ->
                                                                     Box(
