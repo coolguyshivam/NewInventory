@@ -69,6 +69,7 @@ fun InventoryScreen(
     val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var itemToEdit by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -189,7 +190,7 @@ fun InventoryScreen(
                             item = item,
                             userRole = role,
                             onClick = { selectedItem = item },
-                            onEdit = { /* implement if needed */ },
+                            onEdit = { itemToEdit = item },
                             onDelete = {
                                 scope.launch {
                                     if (!item.canDelete()) {
@@ -457,6 +458,48 @@ fun InventoryScreen(
                                 onClick = { filterDialogVisible = false },
                                 shape = RoundedCornerShape(12.dp)
                             ) { Text("Apply") }
+                        }
+                    }
+                )
+            }
+
+            // Edit item dialog
+            itemToEdit?.let { item ->
+                AddEditItemDialog(
+                    originalItem = item,
+                    onDismiss = { itemToEdit = null },
+                    onSave = { updatedItem ->
+                        scope.launch {
+                            // Create an EDIT transaction to log the change
+                            val editTransaction = Transaction(
+                                id = "",
+                                type = "EDIT",
+                                model = updatedItem.model,
+                                serial = updatedItem.serial,
+                                customerName = "System",
+                                phoneNumber = null,
+                                aadhaarNumber = null,
+                                amount = 0.0,
+                                quantity = updatedItem.quantity,
+                                description = "Item edited: ${item.name} -> ${updatedItem.name}, ${item.model} -> ${updatedItem.model}",
+                                date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                                timestamp = System.currentTimeMillis(),
+                                userRole = role.name,
+                                images = emptyList()
+                            )
+                            
+                            // Save the edit transaction
+                            inventoryRepo.addTransaction(updatedItem.serial, editTransaction)
+                            
+                            // Update the item
+                            val result = inventoryRepo.addOrUpdateItem(updatedItem.serial, updatedItem)
+                            if (result is com.example.inventoryapp.data.Result.Success) {
+                                viewModel.loadInventory()
+                                snackbarHostState.showSnackbar("Item updated successfully")
+                            } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to update item")
+                            }
+                            itemToEdit = null
                         }
                     }
                 )
