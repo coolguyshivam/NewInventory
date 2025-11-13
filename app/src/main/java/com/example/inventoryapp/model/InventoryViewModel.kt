@@ -45,6 +45,10 @@ class InventoryViewModel(
     private val _selectedSerials = MutableStateFlow<Set<String>>(emptySet())
     val selectedSerials: StateFlow<Set<String>> = _selectedSerials
 
+    // Status filter for tabs
+    private val _statusFilter = MutableStateFlow<ItemStatus?>(null)
+    val statusFilter: StateFlow<ItemStatus?> = _statusFilter
+
     // Pagination state
     private var lastInventorySerial: String? = null
     private var lastTransactionId: String? = null
@@ -60,12 +64,22 @@ class InventoryViewModel(
             val result = repo.getAllItems(limit = limit, startAfter = if (paginate) lastInventorySerial else null)
             when (result) {
                 is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
+                    val statusToShow = _statusFilter.value
+                    // Filter based on status tab
+                    val validItems = if (statusToShow == ItemStatus.REPAIR) {
+                        // Show only items in repair
+                        result.data.filter { it.status == ItemStatus.REPAIR || it.isInRepair }
+                    } else {
+                        // Show only available items (default main inventory)
+                        result.data.filter { it.quantity > 0 && it.status == ItemStatus.AVAILABLE && !it.isSold && !it.isInRepair }
+                    }
+                    
+                    // Remove sold/deleted items from database
+                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.status == ItemStatus.DELETED }
                     removedItems.forEach { item ->
                         repo.deleteItem(item.serial)
                     }
+                    
                     if (paginate) {
                         _inventory.postValue((_inventory.value ?: emptyList()) + validItems)
                     } else {
@@ -100,6 +114,11 @@ class InventoryViewModel(
         loadInventoryWithFilters()
     }
 
+    fun setStatusFilter(status: ItemStatus?) {
+        _statusFilter.value = status
+        loadInventory()
+    }
+
     private fun loadInventoryWithFilters() {
         _loading.value = true
         _error.value = null
@@ -107,12 +126,22 @@ class InventoryViewModel(
             val result = repo.getAllItems(limit = 500)
             when (result) {
                 is Result.Success -> {
-                    // Remove items with quantity zero, sold or in repair from the database
-                    val validItems = result.data.filter { it.quantity > 0 && (!it.isSold) && (!it.isInRepair) }
-                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.isInRepair }
+                    val statusToShow = _statusFilter.value
+                    // Filter based on status tab
+                    val validItems = if (statusToShow == ItemStatus.REPAIR) {
+                        // Show only items in repair
+                        result.data.filter { it.status == ItemStatus.REPAIR || it.isInRepair }
+                    } else {
+                        // Show only available items (default main inventory)
+                        result.data.filter { it.quantity > 0 && it.status == ItemStatus.AVAILABLE && !it.isSold && !it.isInRepair }
+                    }
+                    
+                    // Remove sold/deleted items from database
+                    val removedItems = result.data.filter { it.quantity <= 0 || it.isSold || it.status == ItemStatus.DELETED }
                     removedItems.forEach { item ->
                         repo.deleteItem(item.serial)
                     }
+                    
                     val filters = _filters.value ?: InventoryFilters()
                     val search = _searchQuery.value
                     val sort = _sortBy.value

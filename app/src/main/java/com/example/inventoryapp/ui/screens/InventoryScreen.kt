@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -39,6 +40,9 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.animation.AnimatedVisibility
+import android.app.DatePickerDialog
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,12 +59,17 @@ fun InventoryScreen(
     val filters by viewModel.filters.observeAsState(InventoryFilters())
     val role = viewModel.userRole
     val sortBy by viewModel.sortBy.collectAsState()
+    
+    // Tab state for Main Inventory vs Repair
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabTitles = listOf("Main Inventory", "Repair")
 
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var selectedSerials by remember { mutableStateOf(setOf<String>()) }
     val allSelected = inventory.isNotEmpty() && inventory.all { selectedSerials.contains(it.serial) }
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var itemToEdit by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -106,6 +115,14 @@ fun InventoryScreen(
         }
     }
 
+    // Update filter when tab changes
+    LaunchedEffect(selectedTabIndex) {
+        when (selectedTabIndex) {
+            0 -> viewModel.setStatusFilter(null) // Main Inventory - show available items
+            1 -> viewModel.setStatusFilter(com.example.inventoryapp.model.ItemStatus.REPAIR) // Repair tab
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
@@ -142,6 +159,21 @@ fun InventoryScreen(
             )
             Spacer(Modifier.height(8.dp))
 
+            // Tab row for Main Inventory and Repair
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+
             when {
                 loading == true -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -158,7 +190,7 @@ fun InventoryScreen(
                             item = item,
                             userRole = role,
                             onClick = { selectedItem = item },
-                            onEdit = { /* implement if needed */ },
+                            onEdit = { itemToEdit = item },
                             onDelete = {
                                 scope.launch {
                                     if (!item.canDelete()) {
@@ -378,9 +410,39 @@ fun InventoryScreen(
                             )
                             OutlinedTextField(
                                 value = filters.date ?: "",
-                                onValueChange = { viewModel.setFilters(filters.copy(date = it)) },
+                                onValueChange = { },
                                 label = { Text("Date (yyyy-MM-dd)") },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        val dateStr = filters.date
+                                        if (!dateStr.isNullOrBlank()) {
+                                            try {
+                                                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                                val date = sdf.parse(dateStr)
+                                                if (date != null) calendar.time = date
+                                            } catch (e: Exception) {
+                                                // Use current date
+                                            }
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedDate = Calendar.getInstance()
+                                                selectedDate.set(year, month, dayOfMonth)
+                                                val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+                                                viewModel.setFilters(filters.copy(date = formattedDate))
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }) {
+                                        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                                    }
+                                }
                             )
                         }
                     },
@@ -396,6 +458,48 @@ fun InventoryScreen(
                                 onClick = { filterDialogVisible = false },
                                 shape = RoundedCornerShape(12.dp)
                             ) { Text("Apply") }
+                        }
+                    }
+                )
+            }
+
+            // Edit item dialog
+            itemToEdit?.let { item ->
+                AddEditItemDialog(
+                    originalItem = item,
+                    onDismiss = { itemToEdit = null },
+                    onSave = { updatedItem ->
+                        scope.launch {
+                            // Create an EDIT transaction to log the change
+                            val editTransaction = Transaction(
+                                id = "",
+                                type = "EDIT",
+                                model = updatedItem.model,
+                                serial = updatedItem.serial,
+                                customerName = "System",
+                                phoneNumber = null,
+                                aadhaarNumber = null,
+                                amount = 0.0,
+                                quantity = updatedItem.quantity,
+                                description = "Item edited: ${item.name} -> ${updatedItem.name}, ${item.model} -> ${updatedItem.model}",
+                                date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                                timestamp = System.currentTimeMillis(),
+                                userRole = role.name,
+                                images = emptyList()
+                            )
+                            
+                            // Save the edit transaction
+                            inventoryRepo.addTransaction(updatedItem.serial, editTransaction)
+                            
+                            // Update the item
+                            val result = inventoryRepo.addOrUpdateItem(updatedItem.serial, updatedItem)
+                            if (result is com.example.inventoryapp.data.Result.Success) {
+                                viewModel.loadInventory()
+                                snackbarHostState.showSnackbar("Item updated successfully")
+                            } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to update item")
+                            }
+                            itemToEdit = null
                         }
                     }
                 )

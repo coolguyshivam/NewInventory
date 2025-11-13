@@ -73,7 +73,7 @@ fun TransactionForm(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    val transactionTypes = listOf("Purchase", "Sale", "Return", "Repair")
+    val transactionTypes = listOf("Purchase", "Sale", "Repair", "Repair Return")
     var type by remember { mutableStateOf(prefillType ?: transactionTypes.first()) }
     var serial by remember { mutableStateOf(prefillSerial ?: "") }
     var model by remember { mutableStateOf(prefillModel ?: "") }
@@ -710,7 +710,39 @@ fun TransactionForm(
                                     uploading = false
                                     return@launch
                                 }
-                                inventoryRepo.removeItemBySerial(serial)
+                                if (!item.canMarkRepair()) {
+                                    snackbarHostState.showSnackbar("Cannot repair: item must be available.")
+                                    loading = false
+                                    uploading = false
+                                    return@launch
+                                }
+                                // Mark item as in repair
+                                val repairedItem = item.copy(
+                                    status = com.example.inventoryapp.model.ItemStatus.REPAIR,
+                                    isInRepair = true
+                                )
+                                inventoryRepo.addOrUpdateItem(serial, repairedItem)
+                            }
+                            if (type == "Repair Return") {
+                                if (item == null) {
+                                    snackbarHostState.showSnackbar("Cannot return: serial not in inventory.")
+                                    loading = false
+                                    uploading = false
+                                    return@launch
+                                }
+                                if (!item.canReturn()) {
+                                    snackbarHostState.showSnackbar("Cannot return: item must be in repair or sold status.")
+                                    loading = false
+                                    uploading = false
+                                    return@launch
+                                }
+                                // Return item to available status
+                                val returnedItem = item.copy(
+                                    status = com.example.inventoryapp.model.ItemStatus.AVAILABLE,
+                                    isInRepair = false,
+                                    isSold = false
+                                )
+                                inventoryRepo.addOrUpdateItem(serial, returnedItem)
                             }
                             if (type == "Return") {
                                 if (!wasSold && !isInRepair) {
