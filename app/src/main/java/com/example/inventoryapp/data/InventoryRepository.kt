@@ -80,7 +80,7 @@ class FirebaseInventoryRepository(
     override suspend fun getTransactionsForSerial(serial: String, limit: Int, startAfter: String?): Result<List<Transaction>> = try {
         var query = db.collection("transactions")
             .whereEqualTo("serial", serial)
-            .orderBy("date", Query.Direction.DESCENDING)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit.toLong())
         if (startAfter != null && startAfter.isNotBlank()) {
             val snapshot = db.collection("transactions").document(startAfter).get().await()
@@ -102,7 +102,7 @@ class FirebaseInventoryRepository(
 
     override suspend fun getAllTransactions(limit: Int, startAfter: String?): Result<List<Transaction>> = try {
         var query = db.collection("transactions")
-            .orderBy("date", Query.Direction.DESCENDING)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(limit.toLong())
         if (startAfter != null && startAfter.isNotBlank()) {
             val snapshot = db.collection("transactions").document(startAfter).get().await()
