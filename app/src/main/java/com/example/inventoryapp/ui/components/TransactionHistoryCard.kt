@@ -52,6 +52,13 @@ fun TransactionHistoryCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (backgroundColor == Color(0xFFE53E3E)) Color.White else Color.Red
                 )
+                if (transaction.deletedInfo.deletionReason.isNotBlank()) {
+                    Text(
+                        "Reason: ${transaction.deletedInfo.deletionReason}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (backgroundColor == Color(0xFFE53E3E)) Color.White else Color.Red
+                    )
+                }
             }
         }
     }

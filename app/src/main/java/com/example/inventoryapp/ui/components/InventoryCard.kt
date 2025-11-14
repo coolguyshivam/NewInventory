@@ -105,7 +105,7 @@ fun InventoryCard(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = item.name,
+                    text = item.model,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)

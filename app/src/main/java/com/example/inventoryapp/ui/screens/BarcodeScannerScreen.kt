@@ -172,7 +172,8 @@ fun BarcodeScannerScreen(
                                     val deleteResult = inventoryRepo.createDeleteTransaction(
                                         serial = item.serial,
                                         item = item,
-                                        deletedBy = "Admin" // TODO: Get actual user from auth context
+                                        deletedBy = "Admin", // TODO: Get actual user from auth context
+                                        deletionReason = "" // Barcode scanner quick delete without reason
                                     )
                                     
                                     if (deleteResult is com.example.inventoryapp.data.Result.Success) {

@@ -15,6 +15,7 @@ data class InventoryItem(
     val date: String = "",                      // Creation/purchase date ("yyyy-MM-dd")
     val timestamp: Long = 0L,                   // Unix time in millis for sorting/filtering
     val imageUrls: List<String> = emptyList(),   // Supports multiple images per item
+    val salePrice: Double? = null,              // Optional: sale price for the item
     
     // New status-based approach
     val status: ItemStatus = ItemStatus.AVAILABLE, // Primary status field

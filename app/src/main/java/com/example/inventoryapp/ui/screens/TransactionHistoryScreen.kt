@@ -481,6 +481,14 @@ fun TransactionHistoryScreen(
                                         color = Color.Red,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
+                                    if (tx.deletedInfo.deletionReason.isNotBlank()) {
+                                        Text(
+                                            "Reason: ${tx.deletedInfo.deletionReason}",
+                                            color = Color.Red,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }

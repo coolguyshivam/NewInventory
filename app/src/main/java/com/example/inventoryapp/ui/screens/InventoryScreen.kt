@@ -75,6 +75,9 @@ fun InventoryScreen(
 
     var selectedItem by remember { mutableStateOf<InventoryItem?>(null) }
     var editingItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var itemToDelete by remember { mutableStateOf<InventoryItem?>(null) }
+    var deletionReason by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -184,30 +187,14 @@ fun InventoryScreen(
                             onClick = { selectedItem = item },
                             onEdit = { editingItem = item },
                             onDelete = {
-                                scope.launch {
-                                    if (!item.canDelete()) {
+                                if (!item.canDelete()) {
+                                    scope.launch {
                                         snackbarHostState.showSnackbar("Cannot delete item: ensure item is available or in repair status")
-                                        return@launch
                                     }
-                                    
-                                    // First create DELETE transaction, then delete item
-                                    val deleteResult = inventoryRepo.createDeleteTransaction(
-                                        serial = item.serial,
-                                        item = item,
-                                        deletedBy = "Admin" // TODO: Get actual user from auth context
-                                    )
-                                    
-                                    if (deleteResult is com.example.inventoryapp.data.Result.Success) {
-                                        val result = inventoryRepo.deleteItem(item.serial)
-                                        if (result is com.example.inventoryapp.data.Result.Success) {
-                                            viewModel.loadInventory()
-                                            snackbarHostState.showSnackbar("Item deleted")
-                                        } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                            snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
-                                        }
-                                    } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
-                                    }
+                                } else {
+                                    itemToDelete = item
+                                    deletionReason = ""
+                                    showDeleteDialog = true
                                 }
                             },
                             onAddTransaction = { 
@@ -453,6 +440,92 @@ fun InventoryScreen(
                             } else if (editResult is com.example.inventoryapp.data.Result.Error) {
                                 snackbarHostState.showSnackbar("Failed to log edit: ${editResult.exception?.message}")
                             }
+                        }
+                    }
+                )
+            }
+            
+            // Delete Confirmation Dialog
+            if (showDeleteDialog && itemToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        showDeleteDialog = false
+                        itemToDelete = null
+                        deletionReason = ""
+                    },
+                    title = { Text("Delete Item") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Are you sure you want to delete this item?")
+                            Text(
+                                "Serial: ${itemToDelete?.serial}\nModel: ${itemToDelete?.model}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            OutlinedTextField(
+                                value = deletionReason,
+                                onValueChange = { deletionReason = it },
+                                label = { Text("Reason for deletion *") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = false,
+                                maxLines = 3,
+                                minLines = 2
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (deletionReason.isBlank()) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Please provide a reason for deletion")
+                                    }
+                                    return@Button
+                                }
+                                
+                                scope.launch {
+                                    itemToDelete?.let { item ->
+                                        // First create DELETE transaction with reason, then delete item
+                                        val deleteResult = inventoryRepo.createDeleteTransaction(
+                                            serial = item.serial,
+                                            item = item,
+                                            deletedBy = "Admin", // TODO: Get actual user from auth context
+                                            deletionReason = deletionReason
+                                        )
+                                        
+                                        if (deleteResult is com.example.inventoryapp.data.Result.Success) {
+                                            val result = inventoryRepo.deleteItem(item.serial)
+                                            if (result is com.example.inventoryapp.data.Result.Success) {
+                                                viewModel.loadInventory()
+                                                snackbarHostState.showSnackbar("Item deleted successfully")
+                                                showDeleteDialog = false
+                                                itemToDelete = null
+                                                deletionReason = ""
+                                            } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                                snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                            }
+                                        } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
+                                            snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                itemToDelete = null
+                                deletionReason = ""
+                            }
+                        ) {
+                            Text("Cancel")
                         }
                     }
                 )
