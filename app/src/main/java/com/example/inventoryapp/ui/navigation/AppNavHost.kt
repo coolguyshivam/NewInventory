@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -64,6 +65,19 @@ fun AppNavHost(
                                     popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
+                                }
+                            }
+                        )
+                    }
+                    // Add Admin menu for ADMIN users
+                    if (userRole == UserRole.ADMIN) {
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = "Admin") },
+                            label = { Text("Admin") },
+                            selected = currentRoute == "manage_users",
+                            onClick = {
+                                navController.navigate("manage_users") {
+                                    launchSingleTop = true
                                 }
                             }
                         )
@@ -172,6 +186,13 @@ fun AppNavHost(
             composable("barcode_reader") {
                 showBottomBar = false
                 BarcodeReaderScreen(navController = navController)
+            }
+            // Admin-only screen
+            if (userRole == UserRole.ADMIN) {
+                composable("manage_users") {
+                    showBottomBar = true
+                    ManageUsersScreen(navController = navController, authRepo = authRepo)
+                }
             }
         }
     }
