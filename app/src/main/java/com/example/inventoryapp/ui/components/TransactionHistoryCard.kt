@@ -30,6 +30,15 @@ fun TransactionHistoryCard(
                 style = MaterialTheme.typography.bodyMedium
             )
             Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
+            if (transaction.customerName.isNotBlank()) {
+                Text("Customer: ${transaction.customerName}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (transaction.phoneNumber?.isNotBlank() == true) {
+                Text("Phone: ${transaction.phoneNumber}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (transaction.aadhaarNumber?.isNotBlank() == true) {
+                Text("Aadhaar: ${transaction.aadhaarNumber}", style = MaterialTheme.typography.bodySmall)
+            }
             Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
             Text(
                 "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(transaction.timestamp))}",

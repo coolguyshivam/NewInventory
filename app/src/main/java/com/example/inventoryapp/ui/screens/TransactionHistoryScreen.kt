@@ -85,7 +85,7 @@ fun TransactionHistoryScreen(
     var loadingRelatedDetails by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val result = inventoryRepo.getAllTransactions()
+        val result = inventoryRepo.getAllTransactions(limit = 1000)
         if (result is Result.Success) {
             transactions = result.data.sortedByDescending { it.timestamp }
         } else {

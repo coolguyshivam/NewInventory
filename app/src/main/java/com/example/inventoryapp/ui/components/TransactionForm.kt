@@ -1,5 +1,6 @@
 package com.example.inventoryapp.ui.components
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -172,6 +173,17 @@ fun TransactionForm(
             } else {
                 imageLimitError = "You can select up to $maxImages images per transaction."
             }
+        }
+    }
+
+    // Setup camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            imagePickerHandler.launchCamera()
+        } else {
+            cameraDeniedReason = "Camera permission is required to take photos. Please enable it in settings."
         }
     }
 
@@ -570,7 +582,8 @@ fun TransactionForm(
                         leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
                         modifier = Modifier.clickable {
                             imageSourceSheetOpen = false
-                            imagePickerHandler.launchCamera()
+                            // Request camera permission before launching camera
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
                     )
                     ListItem(
