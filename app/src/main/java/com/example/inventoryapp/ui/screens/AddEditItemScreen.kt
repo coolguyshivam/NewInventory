@@ -23,6 +23,8 @@ fun AddEditItemDialog(
     var model by remember { mutableStateOf(originalItem.model) }
     var description by remember { mutableStateOf(originalItem.description) }
     var quantity by remember { mutableStateOf(originalItem.quantity.toString()) }
+    var salePrice by remember { mutableStateOf(originalItem.salePrice?.toString() ?: "") }
+    var isSaving by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -38,20 +40,31 @@ fun AddEditItemDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
                     label = { Text("Model") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = { quantity = it },
                     label = { Text("Quantity") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
+                )
+                OutlinedTextField(
+                    value = salePrice,
+                    onValueChange = { salePrice = it },
+                    label = { Text("Sale Price (optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = description,
@@ -64,35 +77,55 @@ fun AddEditItemDialog(
                     minLines = 3,
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Default  // Allow Enter key for newlines
-                    )
+                    ),
+                    enabled = !isSaving
                 )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                // Create a summary of changes
-                val changes = buildList {
-                    if (name != originalItem.name) add("name: '${originalItem.name}' → '$name'")
-                    if (model != originalItem.model) add("model: '${originalItem.model}' → '$model'")
-                    if (description != originalItem.description) add("description changed")
-                    val newQty = quantity.toIntOrNull() ?: originalItem.quantity
-                    if (newQty != originalItem.quantity) add("quantity: ${originalItem.quantity} → $newQty")
+            Button(
+                onClick = {
+                    isSaving = true
+                    // Create a summary of changes
+                    val changes = buildList {
+                        if (name != originalItem.name) add("name: '${originalItem.name}' → '$name'")
+                        if (model != originalItem.model) add("model: '${originalItem.model}' → '$model'")
+                        if (description != originalItem.description) add("description changed")
+                        val newQty = quantity.toIntOrNull() ?: originalItem.quantity
+                        if (newQty != originalItem.quantity) add("quantity: ${originalItem.quantity} → $newQty")
+                        val newSalePrice = salePrice.toDoubleOrNull()
+                        if (newSalePrice != originalItem.salePrice) add("salePrice: ${originalItem.salePrice ?: "N/A"} → ${newSalePrice ?: "N/A"}")
+                    }
+                    val changesSummary = if (changes.isEmpty()) "No changes" else changes.joinToString("; ")
+                    
+                    onSave(
+                        originalItem.copy(
+                            name = name,
+                            model = model,
+                            description = description,
+                            quantity = quantity.toIntOrNull() ?: originalItem.quantity,
+                            salePrice = salePrice.toDoubleOrNull()
+                        ),
+                        changesSummary
+                    )
+                },
+                enabled = !isSaving
+            ) { 
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save")
                 }
-                val changesSummary = if (changes.isEmpty()) "No changes" else changes.joinToString("; ")
-                
-                onSave(
-                    originalItem.copy(
-                        name = name,
-                        model = model,
-                        description = description,
-                        quantity = quantity.toIntOrNull() ?: originalItem.quantity
-                    ),
-                    changesSummary
-                )
-            }) { Text("Save") }
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSaving
+            ) { Text("Cancel") }
         }
     )
 }

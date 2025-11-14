@@ -92,6 +92,7 @@ fun TransactionForm(
     var serialError by remember { mutableStateOf<String?>(null) }
     var modelError by remember { mutableStateOf<String?>(null) }
     var customerNameError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
     var amountError by remember { mutableStateOf<String?>(null) }
     var imageLimitError by remember { mutableStateOf<String?>(null) }
 
@@ -439,12 +440,16 @@ fun TransactionForm(
 
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = formatPhone(it) },
-                label = { Text("Phone (optional)") },
+                onValueChange = { 
+                    phone = formatPhone(it)
+                    phoneError = null
+                },
+                label = { Text("Phone *") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(phoneFocus),
                 singleLine = true,
+                isError = phoneError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Next
@@ -455,6 +460,7 @@ fun TransactionForm(
                 enabled = canEdit && !loading && !uploading,
                 shape = RoundedCornerShape(16.dp)
             )
+            phoneError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = MaterialTheme.typography.bodySmall.fontSize) }
 
             OutlinedTextField(
                 value = aadhaar,
@@ -574,26 +580,29 @@ fun TransactionForm(
             if (imageSourceSheetOpen) {
                 ModalBottomSheet(
                     onDismissRequest = { imageSourceSheetOpen = false },
-                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 ) {
-                    ListItem(
-                        headlineContent = { Text("Take Photo") },
-                        leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            // Request camera permission before launching camera
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    )
-                    ListItem(
-                        headlineContent = { Text("Choose from Gallery") },
-                        leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            imageSourceSheetOpen = false
-                            imagePickerHandler.launchGallery()
-                        }
-                    )
+                    Column(
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("Take Photo") },
+                            leadingContent = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                // Request camera permission before launching camera
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        )
+                        ListItem(
+                            headlineContent = { Text("Choose from Gallery") },
+                            leadingContent = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                imageSourceSheetOpen = false
+                                imagePickerHandler.launchGallery()
+                            }
+                        )
+                    }
                 }
             }
 
@@ -629,6 +638,7 @@ fun TransactionForm(
                 onClick = {
                     serialError = null
                     modelError = null
+                    phoneError = null
                     amountError = null
 
                     var valid = true
@@ -638,6 +648,14 @@ fun TransactionForm(
                     }
                     if ("model" in requiredFields && model.isBlank()) {
                         modelError = "Model is required"
+                        valid = false
+                    }
+                    // Phone number is now mandatory
+                    if (phone.isBlank()) {
+                        phoneError = "Phone number is required"
+                        valid = false
+                    } else if (phone.length != 10) {
+                        phoneError = "Phone number must be 10 digits"
                         valid = false
                     }
                     val amountDouble = amount.toDoubleOrNull()
