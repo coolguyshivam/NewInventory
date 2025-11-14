@@ -301,4 +301,3 @@ class AuthRepository(private val context: Context) {
         return digest.fold("") { str, it -> str + "%02x".format(it) }
     }
 }
-}
