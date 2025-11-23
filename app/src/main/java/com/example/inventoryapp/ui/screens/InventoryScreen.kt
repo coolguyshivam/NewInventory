@@ -84,12 +84,14 @@ fun InventoryScreen(
     var deleteDialogVisible by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<InventoryItem?>(null) }
     var deleteReason by remember { mutableStateOf("") }
+    var isProcessingDelete by remember { mutableStateOf(false) }
     
     // States for repair confirmation dialog
     var repairDialogVisible by remember { mutableStateOf(false) }
     var itemToRepair by remember { mutableStateOf<InventoryItem?>(null) }
     var repairReason by remember { mutableStateOf("") }
     var mechanicName by remember { mutableStateOf("") }
+    var isProcessingRepair by remember { mutableStateOf(false) }
 
     var showPhotoViewer by remember { mutableStateOf(false) }
     var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -523,6 +525,9 @@ fun InventoryScreen(
                     confirmButton = {
                         Button(
                             onClick = {
+                                if (isProcessingDelete) return@Button  // Prevent multiple clicks
+                                isProcessingDelete = true
+                                
                                 val item = itemToDelete ?: return@Button
                                 scope.launch {
                                     // First create DELETE transaction with reason, then delete item
@@ -541,17 +546,27 @@ fun InventoryScreen(
                                             deleteDialogVisible = false
                                             itemToDelete = null
                                             deleteReason = ""
+                                            isProcessingDelete = false
                                         } else if (result is com.example.inventoryapp.data.Result.Error) {
                                             snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                            isProcessingDelete = false
                                         }
                                     } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
                                         snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
+                                        isProcessingDelete = false
                                     }
                                 }
                             },
-                            enabled = deleteReason.isNotBlank()
+                            enabled = deleteReason.isNotBlank() && !isProcessingDelete
                         ) {
-                            Text("Delete")
+                            if (isProcessingDelete) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Text("Delete")
+                            }
                         }
                     },
                     dismissButton = {
@@ -601,6 +616,9 @@ fun InventoryScreen(
                     confirmButton = {
                         Button(
                             onClick = {
+                                if (isProcessingRepair) return@Button  // Prevent multiple clicks
+                                isProcessingRepair = true
+                                
                                 val item = itemToRepair ?: return@Button
                                 scope.launch {
                                     val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
@@ -634,17 +652,27 @@ fun InventoryScreen(
                                             itemToRepair = null
                                             repairReason = ""
                                             mechanicName = ""
+                                            isProcessingRepair = false
                                         } else if (result is com.example.inventoryapp.data.Result.Error) {
                                             snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to mark as repair")
+                                            isProcessingRepair = false
                                         }
                                     } else if (txResult is com.example.inventoryapp.data.Result.Error) {
                                         snackbarHostState.showSnackbar("Failed to log repair: ${txResult.exception?.message}")
+                                        isProcessingRepair = false
                                     }
                                 }
                             },
-                            enabled = repairReason.isNotBlank() && mechanicName.isNotBlank()
+                            enabled = repairReason.isNotBlank() && mechanicName.isNotBlank() && !isProcessingRepair
                         ) {
-                            Text("Mark for Repair")
+                            if (isProcessingRepair) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Text("Mark for Repair")
+                            }
                         }
                     },
                     dismissButton = {
