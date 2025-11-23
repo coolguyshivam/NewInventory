@@ -28,6 +28,8 @@ fun AddEditItemDialog(
     var mobileNumber by remember { mutableStateOf(originalItem.phone) }
     var adharNumber by remember { mutableStateOf(originalItem.aadhaar) }
     var purchasePrice by remember { mutableStateOf(originalItem.purchasePrice.toString()) }
+    // Note: isSaving is reset when dialog is dismissed (parent sets editingItem = null),
+    // causing the entire dialog to be recreated with fresh state on next edit
     var isSaving by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -146,6 +148,7 @@ fun AddEditItemDialog(
                             changesSummary
                         )
                     } else {
+                        isSaving = false  // Reset state when no changes
                         onDismiss()
                     }
                 },
