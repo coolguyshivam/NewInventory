@@ -8,7 +8,7 @@
     
     <!-- Background circle for adaptive icon -->
     <path
-        android:fillColor="#6200EE"
+        android:fillColor="@color/ic_launcher_background"
         android:pathData="M0,0h108v108h-108z"/>
     
     <!-- Box outline -->
@@ -32,7 +32,7 @@
         <!-- Box detail line -->
         <path
             android:strokeWidth="2"
-            android:strokeColor="#6200EE"
+            android:strokeColor="@color/ic_launcher_background"
             android:pathData="M8,12 L27,20 L46,12"/>
         
         <!-- Checkmark items on box -->
@@ -50,7 +50,7 @@
             <!-- Line 1 -->
             <path
                 android:strokeWidth="1.5"
-                android:strokeColor="#6200EE"
+                android:strokeColor="@color/ic_launcher_background"
                 android:pathData="M12,5 L24,5"/>
         </group>
         
@@ -68,7 +68,7 @@
             <!-- Line 2 -->
             <path
                 android:strokeWidth="1.5"
-                android:strokeColor="#6200EE"
+                android:strokeColor="@color/ic_launcher_background"
                 android:pathData="M12,5 L24,5"/>
         </group>
     </group>
