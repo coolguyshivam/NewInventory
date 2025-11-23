@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -299,7 +301,7 @@ fun InventoryScreen(
                                 )
                                 IconButton(onClick = { showPrice = !showPrice }) {
                                     Icon(
-                                        imageVector = if (showPrice) androidx.compose.material.icons.Icons.Filled.FilterList else androidx.compose.material.icons.Icons.Filled.Search,
+                                        imageVector = if (showPrice) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                         contentDescription = if (showPrice) "Hide Price" else "Show Price"
                                     )
                                 }
