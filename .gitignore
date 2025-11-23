@@ -1,3 +1,8 @@
+# Gradle files
+.gradle/
+build/
+*.lock
+*.bin
 # Gradle
 .gradle/
 build/
@@ -6,6 +11,11 @@ local.properties
 # Android Studio
 .idea/
 *.iml
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
 .DS_Store
 
 # Built application files

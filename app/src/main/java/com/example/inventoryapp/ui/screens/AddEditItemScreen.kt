@@ -28,6 +28,9 @@ fun AddEditItemDialog(
     var mobileNumber by remember { mutableStateOf(originalItem.phone) }
     var adharNumber by remember { mutableStateOf(originalItem.aadhaar) }
     var purchasePrice by remember { mutableStateOf(originalItem.purchasePrice.toString()) }
+    // Note: isSaving is reset when dialog is dismissed (parent sets editingItem = null),
+    // causing the entire dialog to be recreated with fresh state on next edit
+    var isSaving by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -107,43 +110,59 @@ fun AddEditItemDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                // Create a summary of changes (excluding timestamp)
-                val changes = buildList {
-                    if (name != originalItem.name) add("name: '${originalItem.name}' → '$name'")
-                    if (model != originalItem.model) add("model: '${originalItem.model}' → '$model'")
-                    if (description != originalItem.description) add("description changed")
-                    val newQty = quantity.toIntOrNull() ?: originalItem.quantity
-                    if (newQty != originalItem.quantity) add("quantity: ${originalItem.quantity} → $newQty")
-                    if (purchaseDate != originalItem.date) add("purchase date: '${originalItem.date}' → '$purchaseDate'")
-                    if (customerName != originalItem.customerName) add("customer name: '${originalItem.customerName}' → '$customerName'")
-                    if (mobileNumber != originalItem.phone) add("mobile: '${originalItem.phone}' → '$mobileNumber'")
-                    if (adharNumber != originalItem.aadhaar) add("aadhaar: '${originalItem.aadhaar}' → '$adharNumber'")
-                    val newPrice = purchasePrice.toDoubleOrNull() ?: originalItem.purchasePrice
-                    if (newPrice != originalItem.purchasePrice) add("purchase price: ${originalItem.purchasePrice} → $newPrice")
-                }
-                val changesSummary = if (changes.isEmpty()) "No changes" else changes.joinToString("; ")
-                
-                // Only save if there are changes (excluding timestamp)
-                if (changes.isNotEmpty()) {
-                    onSave(
-                        originalItem.copy(
-                            name = name,
-                            model = model,
-                            description = description,
-                            quantity = quantity.toIntOrNull() ?: originalItem.quantity,
-                            date = purchaseDate,
-                            customerName = customerName,
-                            phone = mobileNumber,
-                            aadhaar = adharNumber,
-                            purchasePrice = purchasePrice.toDoubleOrNull() ?: originalItem.purchasePrice
-                        ),
-                        changesSummary
+            Button(
+                onClick = {
+                    if (isSaving) return@Button  // Prevent multiple clicks
+                    isSaving = true
+                    
+                    // Create a summary of changes (excluding timestamp)
+                    val changes = buildList {
+                        if (name != originalItem.name) add("name: '${originalItem.name}' → '$name'")
+                        if (model != originalItem.model) add("model: '${originalItem.model}' → '$model'")
+                        if (description != originalItem.description) add("description changed")
+                        val newQty = quantity.toIntOrNull() ?: originalItem.quantity
+                        if (newQty != originalItem.quantity) add("quantity: ${originalItem.quantity} → $newQty")
+                        if (purchaseDate != originalItem.date) add("purchase date: '${originalItem.date}' → '$purchaseDate'")
+                        if (customerName != originalItem.customerName) add("customer name: '${originalItem.customerName}' → '$customerName'")
+                        if (mobileNumber != originalItem.phone) add("mobile: '${originalItem.phone}' → '$mobileNumber'")
+                        if (adharNumber != originalItem.aadhaar) add("aadhaar: '${originalItem.aadhaar}' → '$adharNumber'")
+                        val newPrice = purchasePrice.toDoubleOrNull() ?: originalItem.purchasePrice
+                        if (newPrice != originalItem.purchasePrice) add("purchase price: ${originalItem.purchasePrice} → $newPrice")
+                    }
+                    val changesSummary = if (changes.isEmpty()) "No changes" else changes.joinToString("; ")
+                    
+                    // Only save if there are changes (excluding timestamp)
+                    if (changes.isNotEmpty()) {
+                        onSave(
+                            originalItem.copy(
+                                name = name,
+                                model = model,
+                                description = description,
+                                quantity = quantity.toIntOrNull() ?: originalItem.quantity,
+                                date = purchaseDate,
+                                customerName = customerName,
+                                phone = mobileNumber,
+                                aadhaar = adharNumber,
+                                purchasePrice = purchasePrice.toDoubleOrNull() ?: originalItem.purchasePrice
+                            ),
+                            changesSummary
+                        )
+                    } else {
+                        isSaving = false  // Reset state when no changes
+                        onDismiss()
+                    }
+                },
+                enabled = !isSaving
+            ) { 
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(18.dp)
                     )
                 } else {
-                    onDismiss()
+                    Text("Save")
                 }
-            }) { Text("Save") }
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

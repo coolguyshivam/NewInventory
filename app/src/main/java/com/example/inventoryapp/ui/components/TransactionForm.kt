@@ -627,6 +627,8 @@ fun TransactionForm(
 
             Button(
                 onClick = {
+                    if (loading || uploading) return@Button  // Prevent multiple clicks
+                    
                     serialError = null
                     modelError = null
                     amountError = null
