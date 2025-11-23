@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Custom inventory app icon - Box with checklist -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Background circle for adaptive icon -->
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M0,0h108v108h-108z"/>
+    
+    <!-- Box outline -->
+    <group
+        android:translateX="27"
+        android:translateY="27">
+        <!-- Main box body -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:strokeWidth="2"
+            android:strokeColor="#FFFFFF"
+            android:pathData="M8,12 L46,12 L46,50 L8,50 Z"/>
+        
+        <!-- Box flap top -->
+        <path
+            android:fillColor="#E3F2FD"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FFFFFF"
+            android:pathData="M8,12 L27,4 L46,12 Z"/>
+        
+        <!-- Box detail line -->
+        <path
+            android:strokeWidth="2"
+            android:strokeColor="@color/ic_launcher_background"
+            android:pathData="M8,12 L27,20 L46,12"/>
+        
+        <!-- Checkmark items on box -->
+        <group
+            android:translateX="14"
+            android:translateY="22">
+            <!-- Checkmark 1 -->
+            <path
+                android:strokeWidth="2"
+                android:strokeColor="#4CAF50"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="M2,4 L5,7 L10,2"/>
+            
+            <!-- Line 1 -->
+            <path
+                android:strokeWidth="1.5"
+                android:strokeColor="@color/ic_launcher_background"
+                android:pathData="M12,5 L24,5"/>
+        </group>
+        
+        <group
+            android:translateX="14"
+            android:translateY="32">
+            <!-- Checkmark 2 -->
+            <path
+                android:strokeWidth="2"
+                android:strokeColor="#4CAF50"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="M2,4 L5,7 L10,2"/>
+            
+            <!-- Line 2 -->
+            <path
+                android:strokeWidth="1.5"
+                android:strokeColor="@color/ic_launcher_background"
+                android:pathData="M12,5 L24,5"/>
+        </group>
+    </group>
+</vector>
