@@ -113,7 +113,7 @@ fun AppNavHost(
             if (userRole == UserRole.ADMIN) {
                 composable(MainScreen.Analytics.route) {
                     showBottomBar = true
-                    AnalyticsScreen(inventoryRepo = inventoryRepo, userRole = userRole)
+                    AnalyticsScreen(inventoryRepo = inventoryRepo, userRole = userRole, navController = navController)
                 }
             }
             // Transaction screen with query params
@@ -172,6 +172,12 @@ fun AppNavHost(
             composable("barcode_reader") {
                 showBottomBar = false
                 BarcodeReaderScreen(navController = navController)
+            }
+            if (userRole == UserRole.ADMIN) {
+                composable("user_management") {
+                    showBottomBar = false
+                    UserManagementScreen(navController = navController, authRepo = authRepo)
+                }
             }
         }
     }

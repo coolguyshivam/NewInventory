@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +34,8 @@ import java.util.Locale
 @Composable
 fun AnalyticsScreen(
     inventoryRepo: InventoryRepository,
-    userRole: UserRole
+    userRole: UserRole,
+    navController: androidx.navigation.NavController? = null
 ) {
     // Only allow admin users (not operators)
     if (userRole != UserRole.ADMIN) {
@@ -98,10 +101,23 @@ fun AnalyticsScreen(
 
     val totalSales = filtered.filter { it.type.equals("Sale", true) }.sumOf { it.amount }
     val totalPurchases = filtered.filter { it.type.equals("Purchase", true) }.sumOf { it.amount }
-    val totalRepairs = filtered.filter { it.type.equals("Repair", true) }.sumOf { it.amount }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Analytics Dashboard") }) }
+        topBar = { 
+            TopAppBar(
+                title = { Text("Analytics Dashboard") },
+                actions = {
+                    if (navController != null) {
+                        IconButton(onClick = { navController.navigate("user_management") }) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = "Manage Users"
+                            )
+                        }
+                    }
+                }
+            ) 
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -142,39 +158,6 @@ fun AnalyticsScreen(
                         Text("Purchases", fontWeight = FontWeight.Bold, color = Color.White)
                         Text("₹$totalPurchases", style = MaterialTheme.typography.titleLarge, color = Color.White)
                         Text("${filtered.count { it.type.equals("Purchase", true) }} txns", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                    }
-                }
-            }
-            
-            Spacer(Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Repairs Card
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFA726))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Repairs", fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("₹$totalRepairs", style = MaterialTheme.typography.titleLarge, color = Color.White)
-                        Text("${filtered.count { it.type.equals("Repair", true) }} txns", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                    }
-                }
-                
-                // Net Profit Card
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (totalSales - totalPurchases >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Net Profit", fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("₹${totalSales - totalPurchases}", style = MaterialTheme.typography.titleLarge, color = Color.White)
-                        Text("Sales - Purchases", style = MaterialTheme.typography.bodySmall, color = Color.White)
                     }
                 }
             }

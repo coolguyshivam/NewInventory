@@ -79,6 +79,75 @@ class AuthRepository(private val context: Context) {
 
     fun canViewAnalytics(): Boolean = getCurrentUserRole() == UserRole.ADMIN
 
+    fun addUser(username: String, password: String, role: UserRole): Result<User> {
+        // Only admin can add users
+        if (getCurrentUserRole() != UserRole.ADMIN) {
+            return Result.Error(Exception("Only admins can add users"))
+        }
+        
+        // Check if username already exists
+        if (getUser(username) != null) {
+            return Result.Error(Exception("Username already exists"))
+        }
+        
+        // Validate inputs
+        if (username.isBlank()) {
+            return Result.Error(Exception("Username cannot be empty"))
+        }
+        
+        if (password.length < 6) {
+            return Result.Error(Exception("Password must be at least 6 characters"))
+        }
+        
+        val user = User(username, hashPassword(password), role)
+        saveUser(user)
+        return Result.Success(user)
+    }
+    
+    fun getAllUsers(): List<User> {
+        // Only admin can view all users
+        if (getCurrentUserRole() != UserRole.ADMIN) {
+            return emptyList()
+        }
+        
+        val usernames = mutableListOf<String>()
+        val allKeys = prefs.all.keys
+        
+        // Extract unique usernames from SharedPreferences keys
+        allKeys.forEach { key ->
+            if (key.startsWith("user_") && key.endsWith("_password")) {
+                val username = key.removePrefix("user_").removeSuffix("_password")
+                usernames.add(username)
+            }
+        }
+        
+        return usernames.mapNotNull { getUser(it) }
+    }
+    
+    fun deleteUser(username: String): Result<Boolean> {
+        // Only admin can delete users
+        if (getCurrentUserRole() != UserRole.ADMIN) {
+            return Result.Error(Exception("Only admins can delete users"))
+        }
+        
+        // Cannot delete yourself
+        if (_currentUser.value?.username == username) {
+            return Result.Error(Exception("Cannot delete your own account"))
+        }
+        
+        // Check if user exists
+        if (getUser(username) == null) {
+            return Result.Error(Exception("User not found"))
+        }
+        
+        prefs.edit()
+            .remove("user_${username}_password")
+            .remove("user_${username}_role")
+            .apply()
+        
+        return Result.Success(true)
+    }
+
     fun isBiometricAvailable(): Boolean {
         val biometricManager = BiometricManager.from(context)
         return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
