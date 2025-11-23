@@ -504,6 +504,7 @@ fun InventoryScreen(
                         deleteDialogVisible = false
                         itemToDelete = null
                         deleteReason = ""
+                        isProcessingDelete = false
                     },
                     title = { Text("Delete Item: ${itemToDelete?.serial}") },
                     text = {
@@ -574,6 +575,7 @@ fun InventoryScreen(
                             deleteDialogVisible = false
                             itemToDelete = null
                             deleteReason = ""
+                            isProcessingDelete = false
                         }) {
                             Text("Cancel")
                         }
@@ -589,6 +591,7 @@ fun InventoryScreen(
                         itemToRepair = null
                         repairReason = ""
                         mechanicName = ""
+                        isProcessingRepair = false
                     },
                     title = { Text("Mark Item for Repair: ${itemToRepair?.serial}") },
                     text = {
@@ -681,6 +684,7 @@ fun InventoryScreen(
                             itemToRepair = null
                             repairReason = ""
                             mechanicName = ""
+                            isProcessingRepair = false
                         }) {
                             Text("Cancel")
                         }
