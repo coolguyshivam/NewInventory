@@ -172,7 +172,8 @@ fun BarcodeScannerScreen(
                                     val deleteResult = inventoryRepo.createDeleteTransaction(
                                         serial = item.serial,
                                         item = item,
-                                        deletedBy = "Admin" // TODO: Get actual user from auth context
+                                        deletedBy = "Admin", // TODO: Get actual user from auth context
+                                        reason = "" // Legacy delete without reason prompt
                                     )
                                     
                                     if (deleteResult is com.example.inventoryapp.data.Result.Success) {

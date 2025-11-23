@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -77,6 +79,17 @@ fun InventoryScreen(
     var editingItem by remember { mutableStateOf<InventoryItem?>(null) }
     var filterDialogVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // States for delete confirmation dialog
+    var deleteDialogVisible by remember { mutableStateOf(false) }
+    var itemToDelete by remember { mutableStateOf<InventoryItem?>(null) }
+    var deleteReason by remember { mutableStateOf("") }
+    
+    // States for repair confirmation dialog
+    var repairDialogVisible by remember { mutableStateOf(false) }
+    var itemToRepair by remember { mutableStateOf<InventoryItem?>(null) }
+    var repairReason by remember { mutableStateOf("") }
+    var mechanicName by remember { mutableStateOf("") }
 
     var showPhotoViewer by remember { mutableStateOf(false) }
     var photoViewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -184,30 +197,14 @@ fun InventoryScreen(
                             onClick = { selectedItem = item },
                             onEdit = { editingItem = item },
                             onDelete = {
-                                scope.launch {
-                                    if (!item.canDelete()) {
+                                if (!item.canDelete()) {
+                                    scope.launch {
                                         snackbarHostState.showSnackbar("Cannot delete item: ensure item is available or in repair status")
-                                        return@launch
                                     }
-                                    
-                                    // First create DELETE transaction, then delete item
-                                    val deleteResult = inventoryRepo.createDeleteTransaction(
-                                        serial = item.serial,
-                                        item = item,
-                                        deletedBy = "Admin" // TODO: Get actual user from auth context
-                                    )
-                                    
-                                    if (deleteResult is com.example.inventoryapp.data.Result.Success) {
-                                        val result = inventoryRepo.deleteItem(item.serial)
-                                        if (result is com.example.inventoryapp.data.Result.Success) {
-                                            viewModel.loadInventory()
-                                            snackbarHostState.showSnackbar("Item deleted")
-                                        } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                            snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
-                                        }
-                                    } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
-                                    }
+                                } else {
+                                    itemToDelete = item
+                                    deleteReason = ""
+                                    deleteDialogVisible = true
                                 }
                             },
                             onAddTransaction = { 
@@ -220,19 +217,15 @@ fun InventoryScreen(
                             },
                             onArchive = { /* archive not used */ },
                             onMarkRepair = {
-                                scope.launch {
-                                    if (!item.canMarkRepair()) {
+                                if (!item.canMarkRepair()) {
+                                    scope.launch {
                                         snackbarHostState.showSnackbar("Cannot mark item as repair: item must be available")
-                                        return@launch
                                     }
-                                    val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
-                                    val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
-                                    if (result is com.example.inventoryapp.data.Result.Success) {
-                                        viewModel.loadInventory()
-                                        snackbarHostState.showSnackbar("Item marked as in repair")
-                                    } else if (result is com.example.inventoryapp.data.Result.Error) {
-                                        snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to mark as repair")
-                                    }
+                                } else {
+                                    itemToRepair = item
+                                    repairReason = ""
+                                    mechanicName = ""
+                                    repairDialogVisible = true
                                 }
                             },
                             onReturn = {
@@ -269,13 +262,57 @@ fun InventoryScreen(
                 }
             }
 
-            if (selectedItem != null) {
+            selectedItem?.let { item ->
+                var showPrice by remember { mutableStateOf(false) }
                 AlertDialog(
-                    onDismissRequest = { selectedItem = null },
-                    title = { Text(selectedItem?.name ?: "Item Details") },
-                    text = { Text("Model: ${selectedItem?.model}\nSerial: ${selectedItem?.serial}\nQuantity: ${selectedItem?.quantity}\nDescription: ${selectedItem?.description}") },
+                    onDismissRequest = { 
+                        selectedItem = null
+                        showPrice = false
+                    },
+                    title = { Text(item.name, style = MaterialTheme.typography.titleLarge) },
+                    text = {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Serial Number: ${item.serial}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Model: ${item.model}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Purchase Date: ${item.date}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Quantity: ${item.quantity}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Description: ${if (item.description.isNotBlank()) item.description else "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                            
+                            Spacer(Modifier.height(8.dp))
+                            Text("Customer Details:", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Name: ${if (item.customerName.isNotBlank()) item.customerName else "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Mobile Number: ${if (item.phone.isNotBlank()) item.phone else "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Aadhaar Number: ${if (item.aadhaar.isNotBlank()) item.aadhaar else "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                            
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "Purchase Price: ${if (showPrice) "₹${item.purchasePrice}" else "₹******"}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                                IconButton(onClick = { showPrice = !showPrice }) {
+                                    Icon(
+                                        imageVector = if (showPrice) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                        contentDescription = if (showPrice) "Hide Price" else "Show Price"
+                                    )
+                                }
+                            }
+                        }
+                    },
                     confirmButton = {
-                        Button(onClick = { selectedItem = null }) { Text("Close") }
+                        Button(onClick = { 
+                            selectedItem = null
+                            showPrice = false
+                        }) { Text("Close") }
                     }
                 )
             }
@@ -453,6 +490,171 @@ fun InventoryScreen(
                             } else if (editResult is com.example.inventoryapp.data.Result.Error) {
                                 snackbarHostState.showSnackbar("Failed to log edit: ${editResult.exception?.message}")
                             }
+                        }
+                    }
+                )
+            }
+            
+            // Delete Confirmation Dialog
+            if (deleteDialogVisible && itemToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        deleteDialogVisible = false
+                        itemToDelete = null
+                        deleteReason = ""
+                    },
+                    title = { Text("Delete Item: ${itemToDelete?.serial}") },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Please provide a reason for deleting this item:", style = MaterialTheme.typography.bodyMedium)
+                            OutlinedTextField(
+                                value = deleteReason,
+                                onValueChange = { deleteReason = it },
+                                label = { Text("Reason for deletion") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                maxLines = 4
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val item = itemToDelete ?: return@Button
+                                scope.launch {
+                                    // First create DELETE transaction with reason, then delete item
+                                    val deleteResult = inventoryRepo.createDeleteTransaction(
+                                        serial = item.serial,
+                                        item = item,
+                                        deletedBy = "Admin", // TODO: Get actual user from auth context
+                                        reason = deleteReason
+                                    )
+                                    
+                                    if (deleteResult is com.example.inventoryapp.data.Result.Success) {
+                                        val result = inventoryRepo.deleteItem(item.serial)
+                                        if (result is com.example.inventoryapp.data.Result.Success) {
+                                            viewModel.loadInventory()
+                                            snackbarHostState.showSnackbar("Item deleted")
+                                            deleteDialogVisible = false
+                                            itemToDelete = null
+                                            deleteReason = ""
+                                        } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                            snackbarHostState.showSnackbar(result.exception?.message ?: "Delete failed!")
+                                        }
+                                    } else if (deleteResult is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar("Failed to log deletion: ${deleteResult.exception?.message}")
+                                    }
+                                }
+                            },
+                            enabled = deleteReason.isNotBlank()
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { 
+                            deleteDialogVisible = false
+                            itemToDelete = null
+                            deleteReason = ""
+                        }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+            
+            // Repair Confirmation Dialog
+            if (repairDialogVisible && itemToRepair != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        repairDialogVisible = false
+                        itemToRepair = null
+                        repairReason = ""
+                        mechanicName = ""
+                    },
+                    title = { Text("Mark Item for Repair: ${itemToRepair?.serial}") },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("Please provide details for marking this item as in repair:", style = MaterialTheme.typography.bodyMedium)
+                            OutlinedTextField(
+                                value = repairReason,
+                                onValueChange = { repairReason = it },
+                                label = { Text("Reason for repair") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                maxLines = 4
+                            )
+                            OutlinedTextField(
+                                value = mechanicName,
+                                onValueChange = { mechanicName = it },
+                                label = { Text("Mechanic name") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val item = itemToRepair ?: return@Button
+                                scope.launch {
+                                    val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
+                                    
+                                    // Create a repair transaction with reason and mechanic name
+                                    // Note: Using customerName field to store mechanic name for repair transactions
+                                    val repairTransaction = com.example.inventoryapp.model.Transaction(
+                                        id = "",
+                                        type = "REPAIR",
+                                        model = item.model,
+                                        serial = item.serial,
+                                        customerName = mechanicName, // Mechanic name stored in customerName field
+                                        phoneNumber = "",
+                                        aadhaarNumber = "",
+                                        amount = 0.0,
+                                        quantity = 1,
+                                        description = "Marked for repair. Reason: $repairReason",
+                                        date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
+                                        timestamp = System.currentTimeMillis(),
+                                        userRole = "Admin", // TODO: Get actual user from auth context
+                                        images = emptyList()
+                                    )
+                                    
+                                    val txResult = inventoryRepo.addTransaction(item.serial, repairTransaction)
+                                    if (txResult is com.example.inventoryapp.data.Result.Success) {
+                                        val result = inventoryRepo.addOrUpdateItem(item.serial, updatedItem)
+                                        if (result is com.example.inventoryapp.data.Result.Success) {
+                                            viewModel.loadInventory()
+                                            snackbarHostState.showSnackbar("Item marked as in repair")
+                                            repairDialogVisible = false
+                                            itemToRepair = null
+                                            repairReason = ""
+                                            mechanicName = ""
+                                        } else if (result is com.example.inventoryapp.data.Result.Error) {
+                                            snackbarHostState.showSnackbar(result.exception?.message ?: "Failed to mark as repair")
+                                        }
+                                    } else if (txResult is com.example.inventoryapp.data.Result.Error) {
+                                        snackbarHostState.showSnackbar("Failed to log repair: ${txResult.exception?.message}")
+                                    }
+                                }
+                            },
+                            enabled = repairReason.isNotBlank() && mechanicName.isNotBlank()
+                        ) {
+                            Text("Mark for Repair")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { 
+                            repairDialogVisible = false
+                            itemToRepair = null
+                            repairReason = ""
+                            mechanicName = ""
+                        }) {
+                            Text("Cancel")
                         }
                     }
                 )
