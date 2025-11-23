@@ -31,7 +31,7 @@ interface InventoryRepository {
     suspend fun isSerialInRepair(serial: String): Boolean // <-- Added for in-repair logic
     
     // --- Added for deletion logging ---
-    suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit>
+    suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String, reason: String = ""): Result<Unit>
     
     // --- Added for edit logging ---
     suspend fun createEditTransaction(serial: String, item: InventoryItem, editedBy: String, changesSummary: String): Result<Unit>
@@ -195,7 +195,7 @@ class FirebaseInventoryRepository(
         return (lastTx?.type == "Repair") && !isInInventory
     }
     
-    override suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String): Result<Unit> = try {
+    override suspend fun createDeleteTransaction(serial: String, item: InventoryItem, deletedBy: String, reason: String): Result<Unit> = try {
         val deleteTransaction = Transaction(
             id = "",
             type = "DELETE",
@@ -206,7 +206,7 @@ class FirebaseInventoryRepository(
             aadhaarNumber = "",
             amount = 0.0,
             quantity = 1,
-            description = "Item deleted from inventory",
+            description = if (reason.isNotBlank()) "Item deleted from inventory. Reason: $reason" else "Item deleted from inventory",
             date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
             timestamp = System.currentTimeMillis(),
             userRole = deletedBy,

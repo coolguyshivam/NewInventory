@@ -27,9 +27,10 @@ fun TransactionHistoryCard(
         Column(Modifier.padding(12.dp)) {
             Text(
                 "Model: ${transaction.model} | Serial: ${transaction.serial}",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             )
-            Text("Type: ${transaction.type} | Amount: ${transaction.amount}", style = MaterialTheme.typography.bodySmall)
+            Text("Type: ${transaction.type} | Amount: ₹${transaction.amount}", style = MaterialTheme.typography.bodySmall)
             if (transaction.customerName.isNotBlank()) {
                 Text("Customer: ${transaction.customerName}", style = MaterialTheme.typography.bodySmall)
             }
@@ -39,11 +40,24 @@ fun TransactionHistoryCard(
             if (transaction.aadhaarNumber?.isNotBlank() == true) {
                 Text("Aadhaar: ${transaction.aadhaarNumber}", style = MaterialTheme.typography.bodySmall)
             }
+            if (transaction.description?.isNotBlank() == true) {
+                Text("Description: ${transaction.description}", style = MaterialTheme.typography.bodySmall)
+            }
             Text("Date: ${transaction.date}", style = MaterialTheme.typography.bodySmall)
             Text(
                 "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(transaction.timestamp))}",
                 style = MaterialTheme.typography.bodySmall
             )
+            
+            // Show employee/account name with timestamp for all transactions
+            if (transaction.userRole.isNotBlank()) {
+                Text(
+                    "Performed by: ${transaction.userRole}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             
             // Show deletion info for DELETE transactions
             if (transaction.type.uppercase() == "DELETE" && transaction.deletedInfo != null) {
