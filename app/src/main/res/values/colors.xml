@@ -10,6 +10,7 @@
 	<color name="colorOnSurface">#1A1A1A</color>
 	<color name="colorError">#B00020</color>
 	<color name="colorOnError">#FFFFFF</color>
+	<color name="ic_launcher_background">#6200EE</color>
 	<color name="purple_200">#BB86FC</color>
     <color name="purple_500">#6200EE</color>
     <color name="purple_700">#3700B3</color>
