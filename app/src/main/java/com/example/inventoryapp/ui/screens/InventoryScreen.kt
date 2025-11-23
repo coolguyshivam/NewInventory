@@ -287,7 +287,7 @@ fun InventoryScreen(
                             Text("Customer Details:", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("Name: ${if (item.customerName.isNotBlank()) item.customerName else "N/A"}", style = MaterialTheme.typography.bodyMedium)
                             Text("Mobile Number: ${if (item.phone.isNotBlank()) item.phone else "N/A"}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Adhar Number: ${if (item.aadhaar.isNotBlank()) item.aadhaar else "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Aadhaar Number: ${if (item.aadhaar.isNotBlank()) item.aadhaar else "N/A"}", style = MaterialTheme.typography.bodyMedium)
                             
                             Spacer(Modifier.height(8.dp))
                             Row(
@@ -606,12 +606,13 @@ fun InventoryScreen(
                                     val updatedItem = item.copy(status = com.example.inventoryapp.model.ItemStatus.REPAIR)
                                     
                                     // Create a repair transaction with reason and mechanic name
+                                    // Note: Using customerName field to store mechanic name for repair transactions
                                     val repairTransaction = com.example.inventoryapp.model.Transaction(
                                         id = "",
                                         type = "REPAIR",
                                         model = item.model,
                                         serial = item.serial,
-                                        customerName = mechanicName,
+                                        customerName = mechanicName, // Mechanic name stored in customerName field
                                         phoneNumber = "",
                                         aadhaarNumber = "",
                                         amount = 0.0,

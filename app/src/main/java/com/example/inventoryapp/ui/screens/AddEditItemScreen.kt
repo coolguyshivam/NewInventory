@@ -80,7 +80,7 @@ fun AddEditItemDialog(
                 OutlinedTextField(
                     value = adharNumber,
                     onValueChange = { adharNumber = it },
-                    label = { Text("Adhar Number") },
+                    label = { Text("Aadhaar Number") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -118,7 +118,7 @@ fun AddEditItemDialog(
                     if (purchaseDate != originalItem.date) add("purchase date: '${originalItem.date}' → '$purchaseDate'")
                     if (customerName != originalItem.customerName) add("customer name: '${originalItem.customerName}' → '$customerName'")
                     if (mobileNumber != originalItem.phone) add("mobile: '${originalItem.phone}' → '$mobileNumber'")
-                    if (adharNumber != originalItem.aadhaar) add("adhar: '${originalItem.aadhaar}' → '$adharNumber'")
+                    if (adharNumber != originalItem.aadhaar) add("aadhaar: '${originalItem.aadhaar}' → '$adharNumber'")
                     val newPrice = purchasePrice.toDoubleOrNull() ?: originalItem.purchasePrice
                     if (newPrice != originalItem.purchasePrice) add("purchase price: ${originalItem.purchasePrice} → $newPrice")
                 }
