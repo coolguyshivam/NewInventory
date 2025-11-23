@@ -230,6 +230,7 @@ class FirebaseInventoryRepository(
             model = item.model,
             serial = serial,
             customerName = item.customerName,
+            // Note: Using InventoryItem.phone/aadhaar which map to Transaction.phoneNumber/aadhaarNumber via legacy fields
             phoneNumber = item.phone,
             aadhaarNumber = item.aadhaar,
             amount = 0.0,
