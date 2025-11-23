@@ -107,7 +107,8 @@ fun AnalyticsScreen(
             TopAppBar(
                 title = { Text("Analytics Dashboard") },
                 actions = {
-                    if (navController != null) {
+                    // Only show user management button for admins
+                    if (navController != null && userRole == UserRole.ADMIN) {
                         IconButton(onClick = { navController.navigate("user_management") }) {
                             Icon(
                                 imageVector = Icons.Default.Group,
