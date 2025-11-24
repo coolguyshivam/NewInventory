@@ -233,7 +233,7 @@ class FirebaseInventoryRepository(
             // Note: Using InventoryItem.phone/aadhaar which map to Transaction.phoneNumber/aadhaarNumber via legacy fields
             phoneNumber = item.phone,
             aadhaarNumber = item.aadhaar,
-            amount = 0.0,
+            amount = item.purchasePrice, // Use the updated purchase price
             quantity = item.quantity,
             description = "Item edited: $changesSummary",
             date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),

@@ -30,6 +30,10 @@ import com.example.inventoryapp.ui.components.DateField
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// Helper function to check if a transaction should be included in analytics
+private fun Transaction.isAnalyticsTransaction(): Boolean =
+    this.type.equals("Purchase", ignoreCase = true) || this.type.equals("Sale", ignoreCase = true)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
@@ -37,13 +41,13 @@ fun AnalyticsScreen(
     userRole: UserRole,
     navController: androidx.navigation.NavController? = null
 ) {
-    // Only allow admin users (not operators)
-    if (userRole != UserRole.ADMIN) {
+    // Only allow admin and analyst users
+    if (userRole != UserRole.ADMIN && userRole != UserRole.ANALYST) {
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Analytics available to admin accounts only.", color = Color.Red)
+            Text("Analytics available to admin and analyst accounts only.", color = Color.Red)
         }
         return
     }
@@ -61,9 +65,17 @@ fun AnalyticsScreen(
         }
     }
 
-    // Generate filter options
-    val types = remember(transactions) { listOf("All") + transactions.map { it.type }.distinct().sorted() }
-    val models = remember(transactions) { listOf("All") + transactions.mapNotNull { it.model }.distinct().sorted() }
+    // Generate filter options - only include Purchase and Sale for analytics
+    val types = remember(transactions) { 
+        listOf("All", "Purchase", "Sale")
+    }
+    val models = remember(transactions) { 
+        listOf("All") + transactions
+            .filter { it.isAnalyticsTransaction() }
+            .mapNotNull { it.model }
+            .distinct()
+            .sorted() 
+    }
 
     // Filter state
     var selectedType by remember { mutableStateOf("All") }
@@ -91,7 +103,10 @@ fun AnalyticsScreen(
     val startDateLong = startDate.takeIf { it.isNotBlank() }?.let { sdf.parse(it)?.time } ?: Long.MIN_VALUE
     val endDateLong = endDate.takeIf { it.isNotBlank() }?.let { sdf.parse(it)?.time } ?: Long.MAX_VALUE
 
+    // Filter to show only Purchase and Sale transactions
     val filtered = transactions.filter { tx ->
+        // Only include Purchase and Sale transactions
+        tx.isAnalyticsTransaction() &&
         (selectedType == "All" || tx.type.equals(selectedType, ignoreCase = true)) &&
         (selectedModel == "All" || tx.model.equals(selectedModel, ignoreCase = true)) &&
         (minAmount.toDoubleOrNull()?.let { tx.amount >= it } ?: true) &&

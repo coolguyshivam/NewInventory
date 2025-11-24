@@ -233,8 +233,10 @@ fun TransactionHistoryScreen(
                                 "sale" -> Color(0xFF4CAF50)
                                 "purchase" -> Color(0xFF2196F3)
                                 "repair" -> Color(0xFFFFA726)
+                                "repair return" -> Color(0xFF9C27B0) // Purple for Repair Return
                                 "return" -> Color(0xFFBDBDBD)
                                 "delete" -> Color(0xFFE53E3E) // Red for DELETE entries
+                                "edit" -> Color(0xFF673AB7) // Deep Purple for Edit
                                 else -> MaterialTheme.colorScheme.surface
                             }
                         )
@@ -372,9 +374,10 @@ fun TransactionHistoryScreen(
                                     "sale" -> Color(0xFF4CAF50)
                                     "purchase" -> Color(0xFF2196F3)
                                     "repair" -> Color(0xFFFFA726)
+                                    "repair return" -> Color(0xFF9C27B0)
                                     "return" -> Color(0xFFBDBDBD)
                                     "delete" -> Color(0xFFE53E3E)
-                                    "edit" -> Color(0xFF9C27B0)
+                                    "edit" -> Color(0xFF673AB7) // Deep Purple for Edit
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 }
                             )
@@ -570,9 +573,10 @@ fun TransactionHistoryScreen(
                                                             "sale" -> Color(0xFF4CAF50).copy(alpha = 0.3f)
                                                             "purchase" -> Color(0xFF2196F3).copy(alpha = 0.3f)
                                                             "repair" -> Color(0xFFFFA726).copy(alpha = 0.3f)
+                                                            "repair return" -> Color(0xFF9C27B0).copy(alpha = 0.3f)
                                                             "return" -> Color(0xFFBDBDBD).copy(alpha = 0.3f)
                                                             "delete" -> Color(0xFFE53E3E).copy(alpha = 0.3f)
-                                                            "edit" -> Color(0xFF9C27B0).copy(alpha = 0.3f)
+                                                            "edit" -> Color(0xFF673AB7).copy(alpha = 0.3f) // Deep Purple for Edit
                                                             else -> MaterialTheme.colorScheme.surfaceVariant
                                                         }
                                                     )
