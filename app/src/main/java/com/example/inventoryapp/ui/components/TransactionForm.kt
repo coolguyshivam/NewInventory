@@ -771,7 +771,9 @@ fun TransactionForm(
                                         description = description,
                                         date = date,
                                         timestamp = System.currentTimeMillis(),
-                                        imageUrls = imageUrls
+                                        imageUrls = imageUrls,
+                                        purchasePrice = amountDouble ?: 0.0,
+                                        customerName = customerName
                                     )
                                     inventoryRepo.addOrUpdateItem(serial, newItem)
                                 }

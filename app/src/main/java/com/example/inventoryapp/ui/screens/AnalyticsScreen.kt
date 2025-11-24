@@ -91,7 +91,10 @@ fun AnalyticsScreen(
     val startDateLong = startDate.takeIf { it.isNotBlank() }?.let { sdf.parse(it)?.time } ?: Long.MIN_VALUE
     val endDateLong = endDate.takeIf { it.isNotBlank() }?.let { sdf.parse(it)?.time } ?: Long.MAX_VALUE
 
+    // Filter to show only Purchase and Sale transactions
     val filtered = transactions.filter { tx ->
+        // Only include Purchase and Sale transactions
+        (tx.type.equals("Purchase", ignoreCase = true) || tx.type.equals("Sale", ignoreCase = true)) &&
         (selectedType == "All" || tx.type.equals(selectedType, ignoreCase = true)) &&
         (selectedModel == "All" || tx.model.equals(selectedModel, ignoreCase = true)) &&
         (minAmount.toDoubleOrNull()?.let { tx.amount >= it } ?: true) &&
