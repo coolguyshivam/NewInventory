@@ -30,6 +30,10 @@ import com.example.inventoryapp.ui.components.DateField
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// Helper function to check if a transaction should be included in analytics
+private fun Transaction.isAnalyticsTransaction(): Boolean =
+    this.type.equals("Purchase", ignoreCase = true) || this.type.equals("Sale", ignoreCase = true)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
@@ -67,7 +71,7 @@ fun AnalyticsScreen(
     }
     val models = remember(transactions) { 
         listOf("All") + transactions
-            .filter { it.type.equals("Purchase", ignoreCase = true) || it.type.equals("Sale", ignoreCase = true) }
+            .filter { it.isAnalyticsTransaction() }
             .mapNotNull { it.model }
             .distinct()
             .sorted() 
@@ -102,7 +106,7 @@ fun AnalyticsScreen(
     // Filter to show only Purchase and Sale transactions
     val filtered = transactions.filter { tx ->
         // Only include Purchase and Sale transactions
-        (tx.type.equals("Purchase", ignoreCase = true) || tx.type.equals("Sale", ignoreCase = true)) &&
+        tx.isAnalyticsTransaction() &&
         (selectedType == "All" || tx.type.equals(selectedType, ignoreCase = true)) &&
         (selectedModel == "All" || tx.model.equals(selectedModel, ignoreCase = true)) &&
         (minAmount.toDoubleOrNull()?.let { tx.amount >= it } ?: true) &&
