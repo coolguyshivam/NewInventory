@@ -41,13 +41,13 @@ fun AnalyticsScreen(
     userRole: UserRole,
     navController: androidx.navigation.NavController? = null
 ) {
-    // Only allow admin users (not operators)
-    if (userRole != UserRole.ADMIN) {
+    // Only allow admin and analyst users
+    if (userRole != UserRole.ADMIN && userRole != UserRole.ANALYST) {
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Analytics available to admin accounts only.", color = Color.Red)
+            Text("Analytics available to admin and analyst accounts only.", color = Color.Red)
         }
         return
     }
