@@ -32,6 +32,36 @@ users (collection)
 
 **IMPORTANT:** Before implementing Firestore users, you must create an initial admin user manually in Firestore Console:
 
+#### Step-by-Step Process:
+
+**Step 2.1: Generate Password Hash**
+
+You need to generate a SHA-256 hash of your admin password. You have several options:
+
+**Option A: Use Online Tool (Quick but less secure)**
+1. Go to a SHA-256 generator website (use at your own risk)
+2. Enter your desired password
+3. Copy the resulting hash
+
+**Option B: Use Command Line (Recommended)**
+```bash
+# On Linux/Mac:
+echo -n "your_password_here" | sha256sum
+
+# On Windows PowerShell:
+$password = "your_password_here"
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+$hash = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($password))
+[System.BitConverter]::ToString($hash).Replace("-", "").ToLower()
+```
+
+**Option C: Use the App's Hash Function**
+1. Temporarily modify `AuthRepository.kt` to expose the hash function
+2. Create a test that prints the hash
+3. Use that hash in Firestore
+
+**Step 2.2: Create Admin User in Firestore**
+
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Select your project
 3. Navigate to **Firestore Database** → **Data**
@@ -41,9 +71,9 @@ users (collection)
 7. Add first document with these fields:
    - Document ID: `admin` (or auto-generate)
    - Field `username`: `admin` (type: string)
-   - Field `passwordHash`: `240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9` (type: string)
-     - This is the SHA-256 hash of password "admin123"
-     - To generate hash for a different password, use the hash function in AuthRepository.kt
+   - Field `passwordHash`: `[YOUR_SHA256_PASSWORD_HASH]` (type: string)
+     - Paste the hash you generated in Step 2.1
+     - **IMPORTANT:** Never use weak or default passwords in production
    - Field `role`: `ADMIN` (type: string)
    - Field `createdAt`: (current timestamp)
    - Field `createdBy`: `system` (type: string)

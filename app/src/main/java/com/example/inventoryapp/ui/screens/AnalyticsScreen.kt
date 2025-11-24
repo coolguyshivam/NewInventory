@@ -61,9 +61,17 @@ fun AnalyticsScreen(
         }
     }
 
-    // Generate filter options
-    val types = remember(transactions) { listOf("All") + transactions.map { it.type }.distinct().sorted() }
-    val models = remember(transactions) { listOf("All") + transactions.mapNotNull { it.model }.distinct().sorted() }
+    // Generate filter options - only include Purchase and Sale for analytics
+    val types = remember(transactions) { 
+        listOf("All", "Purchase", "Sale")
+    }
+    val models = remember(transactions) { 
+        listOf("All") + transactions
+            .filter { it.type.equals("Purchase", ignoreCase = true) || it.type.equals("Sale", ignoreCase = true) }
+            .mapNotNull { it.model }
+            .distinct()
+            .sorted() 
+    }
 
     // Filter state
     var selectedType by remember { mutableStateOf("All") }
