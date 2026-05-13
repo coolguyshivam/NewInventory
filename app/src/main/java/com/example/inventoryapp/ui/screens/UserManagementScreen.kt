@@ -377,7 +377,7 @@ fun AddUserDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    // Validate inputs
+                    // Validate inputs //
                     when {
                         username.isBlank() -> {
                             validationError = "Username cannot be empty"
